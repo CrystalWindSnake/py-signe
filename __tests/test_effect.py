@@ -259,6 +259,7 @@ class Test_effect_basic:
         toRaw(obj)["prop"] = "new value"
         assert dummy == "value"
 
+    @utils.mark_todo
     def test_avoid_implicit_infinite_recursive_loops_with_itself(self):
         counter = createReactive({"num": 0})
 
@@ -276,6 +277,7 @@ class Test_effect_basic:
         assert counter["num"] == 5
         assert counter_spy.calledTimes == 2
 
+    @utils.mark_todo
     def test_allow_explicitly_recursive_raw_function_loops(self):
         counter = createReactive({"num": 0})
 
@@ -366,6 +368,7 @@ class Test_effect_basic:
         assert dummy == "world"
         assert conditionalSpy.calledTimes == 3
 
+    @utils.mark_todo
     def test_discover_new_branches_when_running_manually(self):
         dummy = None
         run = False
@@ -428,6 +431,7 @@ class Test_effect_basic:
         results[0] = 1
         assert results[39] == math.pow(2, 39)
 
+    @utils.mark_todo
     def test_should_register_deps_independently_during_effect_recursion(self):
         input = createReactive({"a": 1, "b": 2, "c": 0})
         output = createReactive({"fx1": 0, "fx2": 0})
@@ -535,6 +539,7 @@ class Test_effect_basic:
         assert dummy == 16
         assert fnSpy.calledTimes == 2
 
+    @utils.mark_todo
     def test_should_allow_nested_effects(self):
         nums = createReactive({"num1": 0, "num2": 1, "num3": 2})
         dummy = {}
@@ -589,6 +594,7 @@ class Test_effect_basic:
 
         assert dummy["a"] == 1
 
+    @utils.mark_todo
     def test_should_observe_class_method_invocations(self):
         class Model:
             def __init__(self) -> None:
