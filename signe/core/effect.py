@@ -31,7 +31,8 @@ class Effect(Generic[T]):
 
         self._cleanup_callbacks: list[Callable] = []
 
-        self.__init_run_fn()
+        self.__run_fn()
+        self.__init_no_deps = (len(self.__dep_effects) + len(self.__dep_signals)) <= 0
 
     def _add_sub_effect(self, effect: Effect):
         self._sub_effects.append(effect)
@@ -43,18 +44,19 @@ class Effect(Generic[T]):
         self.__dep_effects.add(effect)
 
     def getValue(self):
-        tick = self.__executor.current_execution_scheduler.tick
-        current_effect = self.__executor.effect_running_stack.get_current()
+        if not self.__init_no_deps:
+            tick = self.__executor.current_execution_scheduler.tick
+            current_effect = self.__executor.effect_running_stack.get_current()
 
-        if current_effect:
-            if self._age == tick:
-                if self._state == EffectState.RUNNING:
-                    raise Exception("circular running")
+            if current_effect:
+                if self._age == tick:
+                    if self._state == EffectState.RUNNING:
+                        raise Exception("circular running")
 
-                self.update()
+                    self.update()
 
-            self.__dep_effects.add(current_effect)
-            current_effect.add_dep_effect(self)
+                self.__dep_effects.add(current_effect)
+                current_effect.add_dep_effect(self)
 
         return self.value
 
@@ -80,19 +82,6 @@ class Effect(Generic[T]):
             return
 
         self.__run_fn()
-
-    def __init_run_fn(self):
-        current_effect = self.__executor.effect_running_stack.get_current()
-
-        if current_effect is not None and current_effect is not self:
-            current_effect._add_sub_effect(self)
-
-        try:
-            self.__executor.effect_running_stack.set_current(self)
-            self.value = self.fn()
-
-        finally:
-            self.__executor.effect_running_stack.reset_current()
 
     def add_cleanup_callback(self, callback: Callable):
         self._cleanup_callbacks.append(callback)
