@@ -1,7 +1,7 @@
 name: test
 run-name: test Actions
 on: 
-  push:
+  pull_request:
     branches:
       - main
 jobs:
