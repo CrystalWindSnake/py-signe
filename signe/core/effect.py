@@ -48,6 +48,9 @@ class Effect(Generic[T]):
 
         a is pre dep effect
         b is next dep effect
+
+        b should be push to next dep of a
+        a should be push to pre dep of b
         """
         self.__pre_dep_effects: Set[Effect] = set()
         self.__next_dep_effects: Set[Effect] = set()
@@ -92,8 +95,8 @@ class Effect(Generic[T]):
 
                     self.update()
 
-                self.add_pre_dep_effect(current_effect)
-                current_effect.add_next_dep_effect(self)
+                self.add_next_dep_effect(current_effect)
+                current_effect.add_pre_dep_effect(self)
 
         return self.value
 
