@@ -2,4 +2,4 @@ from signe.utils import effect, createSignal, computed, batch, cleanup, on
 from signe.reactive.proxy import createReactive, isReactive
 
 
-__version__ = "0.1.4"
+__version__ = "0.1.5"
