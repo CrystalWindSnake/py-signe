@@ -1,7 +1,7 @@
 import json
 import _imports
 import pytest
-from signe import createReactive, effect, computed
+from signe import createReactive, effect, computed, createSignal
 import utils
 from typing import Callable
 import math
@@ -669,9 +669,11 @@ class Test_effect_basic:
 
 class Test_effect_internal:
     def test_effect_dep_records(self):
+        num, set_num = createSignal(0)
+
         @effect
         def a():
-            return 1
+            return num()
 
         @effect
         def b():
@@ -681,4 +683,28 @@ class Test_effect_internal:
         assert len(a._get_pre_dep_effects()) == 0
 
         assert len(b._get_pre_dep_effects()) == 1
+        assert len(b._get_next_dep_effects()) == 0
+
+    def test_effect_multiple_dep_records(self):
+        num, set_num = createSignal(0)
+
+        @effect
+        def a():
+            return num()
+
+        @effect
+        def a1():
+            return num()
+
+        @effect
+        def b():
+            return a.getValue() + a1.getValue()
+
+        assert len(a._get_next_dep_effects()) == 1
+        assert len(a._get_pre_dep_effects()) == 0
+
+        assert len(a1._get_next_dep_effects()) == 1
+        assert len(a1._get_pre_dep_effects()) == 0
+
+        assert len(b._get_pre_dep_effects()) == 2
         assert len(b._get_next_dep_effects()) == 0
