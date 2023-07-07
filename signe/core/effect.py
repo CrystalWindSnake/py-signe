@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import TYPE_CHECKING, Any, TypeVar, Set, Callable, Optional, Generic
 from .consts import EffectState
+from itertools import chain
 
 if TYPE_CHECKING:
     from .runtime import Executor
@@ -31,7 +32,26 @@ class Effect(Generic[T]):
         self._age = 0
         self._state = EffectState.CURRENT
         self.__dep_signals: Set[Signal] = set()
-        self.__dep_effects: Set[Effect] = set()
+
+        """
+        When one effect is triggered by another effect, 
+        the former belongs to a pre dependency 
+        and the latter belongs to a next dependency.
+
+        @effect
+        def a():
+            return 1
+
+        @effect
+        def b():
+            return a()
+
+        a is pre dep effect
+        b is next dep effect
+        """
+        self.__pre_dep_effects: Set[Effect] = set()
+        self.__next_dep_effects: Set[Effect] = set()
+
         self._sub_effects: list[Effect] = []
 
         self._cleanup_callbacks: list[Callable] = []
@@ -39,7 +59,14 @@ class Effect(Generic[T]):
         self._debug_trigger = debug_trigger
 
         self.__run_fn()
-        self.__init_no_deps = (len(self.__dep_effects) + len(self.__dep_signals)) <= 0
+        self.__init_no_deps = (
+            len(self.__pre_dep_effects)
+            + len(self.__next_dep_effects)
+            + len(self.__dep_signals)
+        ) <= 0
+
+    def get_all_dep_effects(self):
+        return chain(self.__pre_dep_effects, self.__next_dep_effects)
 
     def _add_sub_effect(self, effect: Effect):
         self._sub_effects.append(effect)
@@ -47,8 +74,11 @@ class Effect(Generic[T]):
     def add_dep_signal(self, signal: Signal):
         self.__dep_signals.add(signal)
 
-    def add_dep_effect(self, effect: Effect):
-        self.__dep_effects.add(effect)
+    def add_pre_dep_effect(self, effect: Effect):
+        self.__pre_dep_effects.add(effect)
+
+    def add_next_dep_effect(self, effect: Effect):
+        self.__next_dep_effects.add(effect)
 
     def getValue(self):
         if not self.__init_no_deps:
@@ -62,8 +92,8 @@ class Effect(Generic[T]):
 
                     self.update()
 
-                self.__dep_effects.add(current_effect)
-                current_effect.add_dep_effect(self)
+                self.add_pre_dep_effect(current_effect)
+                current_effect.add_next_dep_effect(self)
 
         return self.value
 
@@ -78,7 +108,7 @@ class Effect(Generic[T]):
 
         self.__executor.current_execution_scheduler.add_effect(self)
 
-        for effect in self.__dep_effects:
+        for effect in self.get_all_dep_effects():
             effect._push_scheduler()
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
@@ -118,7 +148,11 @@ class Effect(Generic[T]):
             self.__executor.effect_running_stack.reset_current()
 
     def cleanup_dep_effect(self, effect: Effect):
-        self.__dep_effects.remove(effect)
+        if effect in self.__pre_dep_effects:
+            self.__pre_dep_effects.remove(effect)
+
+        if effect in self.__next_dep_effects:
+            self.__next_dep_effects.remove(effect)
 
     def cleanup_deps(self):
         for s in self.__dep_signals:
@@ -126,10 +160,11 @@ class Effect(Generic[T]):
 
         self.__dep_signals.clear()
 
-        for effect in self.__dep_effects:
+        for effect in self.get_all_dep_effects():
             effect.cleanup_dep_effect(self)
 
-        self.__dep_effects.clear()
+        self.__pre_dep_effects.clear()
+        self.__next_dep_effects.clear()
 
     def __hash__(self) -> int:
         return hash(self.id)
