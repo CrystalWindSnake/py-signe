@@ -31,7 +31,7 @@ def createSignal(value: T, comp: TSignalOptionInitComp[T] = None):
     return s.getValue, s.setValue
 
 
-def effect(fn: Callable[[], None]):
+def effect(fn: Callable[[], T]):
     return Effect(exec, fn)
 
 
