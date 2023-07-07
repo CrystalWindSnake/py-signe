@@ -68,8 +68,14 @@ class Effect(Generic[T]):
             + len(self.__dep_signals)
         ) <= 0
 
-    def get_all_dep_effects(self):
+    def __get_all_dep_effects(self):
         return chain(self.__pre_dep_effects, self.__next_dep_effects)
+
+    def _get_pre_dep_effects(self):
+        return list(self.__pre_dep_effects)
+
+    def _get_next_dep_effects(self):
+        return list(self.__next_dep_effects)
 
     def _add_sub_effect(self, effect: Effect):
         self._sub_effects.append(effect)
@@ -111,7 +117,7 @@ class Effect(Generic[T]):
 
         self.__executor.current_execution_scheduler.add_effect(self)
 
-        for effect in self.get_all_dep_effects():
+        for effect in self.__get_all_dep_effects():
             effect._push_scheduler()
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
@@ -163,7 +169,7 @@ class Effect(Generic[T]):
 
         self.__dep_signals.clear()
 
-        for effect in self.get_all_dep_effects():
+        for effect in self.__get_all_dep_effects():
             effect.cleanup_dep_effect(self)
 
         self.__pre_dep_effects.clear()
