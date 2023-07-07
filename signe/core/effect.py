@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, TypeVar, Set, Callable, Optional, Generic
+from typing import TYPE_CHECKING, Any, TypeVar, Set, Callable, Optional, Generic, cast
 from .consts import EffectState
 from itertools import chain
 
@@ -104,7 +104,7 @@ class Effect(Generic[T]):
                 self.add_next_dep_effect(current_effect)
                 current_effect.add_pre_dep_effect(self)
 
-        return self.value
+        return cast(T, self.value)
 
     def _push_scheduler(self):
         tick = self.__executor.current_execution_scheduler.tick

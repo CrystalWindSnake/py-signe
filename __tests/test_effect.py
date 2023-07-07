@@ -665,3 +665,20 @@ class Test_effect_basic:
         # stopped effect should still be manually callable
         runner()
         assert dummy == 3
+
+
+class Test_effect_internal:
+    def test_effect_dep_records(self):
+        @effect
+        def a():
+            return 1
+
+        @effect
+        def b():
+            return a.getValue() + 1
+
+        assert len(a._get_next_dep_effects()) == 1
+        assert len(a._get_pre_dep_effects()) == 0
+
+        assert len(b._get_pre_dep_effects()) == 1
+        assert len(b._get_next_dep_effects()) == 0
