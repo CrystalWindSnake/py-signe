@@ -36,15 +36,26 @@ def effect(fn: Callable[[], None]):
 
 
 class computed(Generic[T]):
-    def __init__(self, fn: Callable[[], T]) -> None:
+    def __init__(
+        self, fn: Callable[[], T], debug_trigger: Optional[Callable] = None
+    ) -> None:
         self.fn = fn
 
         def getter():
-            effect = Effect(exec, fn)
+            effect = Effect(exec, fn, debug_trigger)
             self.getter = effect
             return effect.getValue()
 
         self.getter = getter
+
+    @staticmethod
+    def debug_trigger(debug_trigger: Optional[Callable] = None):
+        def warp(
+            fn: Callable[[], T],
+        ):
+            return computed(fn, debug_trigger)
+
+        return warp
 
     def __call__(self, *args: Any, **kwds: Any) -> T:
         return self.getter()  # type: ignore

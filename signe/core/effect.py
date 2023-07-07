@@ -17,7 +17,12 @@ class EffectOption:
 class Effect(Generic[T]):
     _g_id = 0
 
-    def __init__(self, executor: Executor, fn: Callable[[], T]) -> None:
+    def __init__(
+        self,
+        executor: Executor,
+        fn: Callable[[], T],
+        debug_trigger: Optional[Callable] = None,
+    ) -> None:
         Effect._g_id += 1
         self.id = Effect._g_id
         self.__executor = executor
@@ -30,6 +35,8 @@ class Effect(Generic[T]):
         self._sub_effects: list[Effect] = []
 
         self._cleanup_callbacks: list[Callable] = []
+
+        self._debug_trigger = debug_trigger
 
         self.__run_fn()
         self.__init_no_deps = (len(self.__dep_effects) + len(self.__dep_signals)) <= 0
@@ -102,6 +109,8 @@ class Effect(Generic[T]):
             self.cleanup_deps()
 
             self.value = self.fn()
+            if self._debug_trigger:
+                self._debug_trigger()
 
             self._state = EffectState.CURRENT
 

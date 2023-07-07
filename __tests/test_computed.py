@@ -68,3 +68,58 @@ class Test_computed_case:
 
         set_num(2)
         assert fn_spy.calledTimes == 1
+
+    def test_debug_trigger(self):
+        num, set_num = createSignal(1)
+
+        @utils.fn
+        def fn_spy():
+            return num() + 1
+
+        @utils.fn
+        def trigger_fn():
+            pass
+
+        m1 = computed(fn_spy, trigger_fn)
+
+        @effect
+        def _():
+            m1()
+
+        assert fn_spy.calledTimes == 1
+        assert trigger_fn.calledTimes == 1
+
+        set_num(1)
+        assert fn_spy.calledTimes == 1
+        assert trigger_fn.calledTimes == 1
+
+        set_num(99)
+        assert fn_spy.calledTimes == 2
+        assert trigger_fn.calledTimes == 2
+
+        assert m1() == 100
+
+    def test_debug_trigger_decorator(self):
+        num, set_num = createSignal(1)
+
+        @utils.fn
+        def trigger_fn():
+            pass
+
+        @computed.debug_trigger(trigger_fn)
+        def m1():
+            return num() + 1
+
+        @effect
+        def _():
+            m1()
+
+        assert trigger_fn.calledTimes == 1
+
+        set_num(1)
+        assert trigger_fn.calledTimes == 1
+
+        set_num(99)
+        assert trigger_fn.calledTimes == 2
+
+        assert m1() == 100
