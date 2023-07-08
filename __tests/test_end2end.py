@@ -183,6 +183,38 @@ class Test_signal_case:
         assert dummy_total == 0
         assert dummy_show == 0
 
+    def test_signal_assignment_triggere_in_effect(self):
+        '''"During an execution, the signal assignment operation is triggered in method A."'''
+        num, set_num = createSignal(0)
+        get_cp_num1, set_cp_num1 = createSignal(99)
+
+        @computed
+        def cp_1():
+            return get_cp_num1() + 1
+
+        @effect
+        def _():
+            num()
+            cp_1()
+
+        dummy1 = None
+
+        @utils.fn
+        def spy_fn():
+            nonlocal dummy1
+            dummy1 = cp_1()
+            set_num(99)
+
+        effect(spy_fn)
+
+        assert spy_fn.calledTimes == 1
+        assert dummy1 == 100
+
+        set_cp_num1(10)
+
+        assert spy_fn.calledTimes == 2
+        assert dummy1 == 11
+
     @utils.mark_todo
     def test_cycle_chain_effect(self):
         num1, set_num1 = createSignal(1)

@@ -1,6 +1,5 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Set, List, Dict
-from abc import abstractmethod
+from typing import TYPE_CHECKING, Set, Dict
 from .collections import Stack
 
 from .effect import Effect
@@ -23,12 +22,20 @@ class Executor:
             or self.__defalut_executionScheduler
         )
 
+    @property
+    def is_running(self):
+        return (
+            self.current_execution_scheduler.is_running
+            or len(self.effect_running_stack) > 0
+        )
+
 
 class ExecutionScheduler:
     def __init__(self) -> None:
         self.__tick = 0
         self.__signal_updates: Dict[Signal, None] = {}
         self.__effect_updates: Dict[Effect, None] = {}
+        self.__running = False
 
     @property
     def tick(self):
@@ -46,10 +53,15 @@ class ExecutionScheduler:
         self.__tick += 1
         return self
 
+    @property
+    def is_running(self):
+        return self.__running
+
     def run(self):
         self.__effect_updates.clear()
         self.next_tick()
         count = 0
+        self.__running = True
 
         while len(self.__signal_updates) > 0 or len(self.__effect_updates) > 0:
             self._run_signal_updates()
@@ -60,6 +72,7 @@ class ExecutionScheduler:
                 raise Exception("exceeded the maximum number of execution rounds.")
 
         self.__tick = 0
+        self.__running = False
 
     def cleanup_signal_updates(self):
         self.__signal_updates.clear()

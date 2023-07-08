@@ -708,3 +708,33 @@ class Test_effect_internal:
 
         assert len(b._get_pre_dep_effects()) == 2
         assert len(b._get_next_dep_effects()) == 0
+
+    def test_signal_assignment_triggere_in_effect_dep_records(self):
+        num, set_num = createSignal(0)
+
+        @effect
+        def a():
+            return num()
+
+        @effect
+        def temp():
+            num()
+            a()
+
+        @effect
+        def a1():
+            return num()
+
+        @effect
+        def b():
+            total = a.getValue() + a1.getValue()
+            set_num(99)
+
+        assert len(a._get_next_dep_effects()) == 2
+        assert len(a._get_pre_dep_effects()) == 0
+
+        assert len(a1._get_next_dep_effects()) == 1
+        assert len(a1._get_pre_dep_effects()) == 0
+
+        assert len(b._get_pre_dep_effects()) == 2
+        assert len(b._get_next_dep_effects()) == 0
