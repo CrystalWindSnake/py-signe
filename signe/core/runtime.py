@@ -88,7 +88,7 @@ class ExecutionScheduler:
         self.cleanup_signal_updates()
 
     def _run_effect_updates(self):
-        effects = list(self.__effect_updates.keys())
+        effects = sorted(self.__effect_updates.keys(), key=lambda x: x.priority_level)
         for s in effects:
             s.update()
             s._reset_age()
