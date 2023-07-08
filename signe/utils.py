@@ -31,8 +31,19 @@ def createSignal(value: T, comp: TSignalOptionInitComp[T] = None):
     return s.getValue, s.setValue
 
 
-def effect(fn: Callable[[], T]):
-    return Effect(exec, fn)
+class _EffectPacker(Generic[T]):
+    def __init__(self) -> None:
+        self._priority_level = 1
+
+    def priority_level(self, level: int):
+        self._priority_level = level
+        return self
+
+    def __call__(self, fn: Callable[[], T]):
+        return Effect(exec, fn, priority_level=self._priority_level)
+
+
+effect = _EffectPacker()
 
 
 class computed(Generic[T]):
