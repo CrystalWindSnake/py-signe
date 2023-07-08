@@ -31,31 +31,41 @@ def createSignal(value: T, comp: TSignalOptionInitComp[T] = None):
     return s.getValue, s.setValue
 
 
-def effect(fn: Callable[[], T], priority_level=1):
-    return Effect(exec, fn, priority_level=priority_level)
+def effect(fn: Callable[..., None], *, priority_level=1):
+    return Effect(exec, fn)
+
+
+def effect_with_opts(priority_level: int):
+    def wrap(fn: Callable[..., None]):
+        return effect(fn, priority_level=priority_level)
+
+    return wrap
 
 
 class computed(Generic[T]):
     def __init__(
-        self, fn: Callable[[], T], debug_trigger: Optional[Callable] = None
+        self,
+        fn: Callable[[], T],
+        debug_trigger: Optional[Callable] = None,
+        priority_level=1,
     ) -> None:
         self.fn = fn
 
         def getter():
-            effect = Effect(exec, fn, debug_trigger)
+            effect = Effect(exec, fn, debug_trigger, priority_level)
             self.getter = effect
             return effect.getValue()
 
         self.getter = getter
 
     @staticmethod
-    def debug_trigger(debug_trigger: Optional[Callable] = None):
-        def warp(
+    def with_opts(priority_level=1, debug_trigger: Optional[Callable] = None):
+        def wrap(
             fn: Callable[[], T],
         ):
-            return computed(fn, debug_trigger)
+            return computed(fn, debug_trigger, priority_level)
 
-        return warp
+        return wrap
 
     def __call__(self, *args: Any, **kwds: Any) -> T:
         return self.getter()  # type: ignore

@@ -106,7 +106,7 @@ class Test_computed_case:
         def trigger_fn():
             pass
 
-        @computed.debug_trigger(trigger_fn)
+        @computed.with_opts(debug_trigger=trigger_fn)
         def m1():
             return num() + 1
 
