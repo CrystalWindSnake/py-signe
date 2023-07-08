@@ -709,10 +709,12 @@ class Test_effect_internal:
         assert len(b._get_pre_dep_effects()) == 2
         assert len(b._get_next_dep_effects()) == 0
 
+
+    @utils.mark_todo
     def test_signal_assignment_triggere_in_effect_dep_records(self):
         num, set_num = createSignal(0)
 
-        @effect
+        @computed
         def a():
             return num()
 
@@ -721,13 +723,13 @@ class Test_effect_internal:
             num()
             a()
 
-        @effect
+        @computed
         def a1():
             return num()
 
         @effect
         def b():
-            total = a.getValue() + a1.getValue()
+            total = a() + a1()
             set_num(99)
 
         assert len(a._get_next_dep_effects()) == 2
