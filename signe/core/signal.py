@@ -73,7 +73,10 @@ class Signal(Generic[T]):
             return self.value
 
         self._pending = value
-        self.__executor.current_execution_scheduler.add_signal(self).run()
+        scheduler = self.__executor.current_execution_scheduler.add_signal(self)
+
+        if not self.__executor.is_running:
+            scheduler.run()
 
         return value  # type: ignore
 

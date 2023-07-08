@@ -1,4 +1,12 @@
-from signe.utils import effect, createSignal, computed, batch, cleanup, on
+from signe.utils import (
+    effect,
+    effect_with_opts,
+    createSignal,
+    computed,
+    batch,
+    cleanup,
+    on,
+)
 from signe.reactive.proxy import createReactive, isReactive
 
 

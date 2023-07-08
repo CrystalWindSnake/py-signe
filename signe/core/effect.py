@@ -23,6 +23,7 @@ class Effect(Generic[T]):
         executor: Executor,
         fn: Callable[[], T],
         debug_trigger: Optional[Callable] = None,
+        priority_level=1,
     ) -> None:
         Effect._g_id += 1
         self.id = Effect._g_id
@@ -32,6 +33,7 @@ class Effect(Generic[T]):
         self._age = 0
         self._state = EffectState.CURRENT
         self.__dep_signals: Set[Signal] = set()
+        self.__priority_level = priority_level
 
         """
         When one effect is triggered by another effect, 
@@ -70,6 +72,10 @@ class Effect(Generic[T]):
 
     def __get_all_dep_effects(self):
         return chain(self.__pre_dep_effects, self.__next_dep_effects)
+
+    @property
+    def priority_level(self):
+        return self.__priority_level
 
     def _get_pre_dep_effects(self):
         return list(self.__pre_dep_effects)
