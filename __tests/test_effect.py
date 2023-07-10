@@ -666,6 +666,18 @@ class Test_effect_basic:
         runner()
         assert dummy == 3
 
+    def test_use_priority_level(self):
+        @effect
+        def runner():
+            pass
+
+        @effect(priority_level=999)
+        def other():
+            pass
+
+        assert runner.priority_level == 1
+        assert other.priority_level == 999
+
 
 class Test_effect_internal:
     def test_effect_dep_records(self):
@@ -708,7 +720,6 @@ class Test_effect_internal:
 
         assert len(b._get_pre_dep_effects()) == 2
         assert len(b._get_next_dep_effects()) == 0
-
 
     @utils.mark_todo
     def test_signal_assignment_triggere_in_effect_dep_records(self):

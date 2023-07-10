@@ -31,15 +31,40 @@ def createSignal(value: T, comp: TSignalOptionInitComp[T] = None):
     return s.getValue, s.setValue
 
 
-def effect(fn: Callable[..., None], *, priority_level=1):
-    return Effect(exec, fn)
+_TEffect_Fn = Callable[[Callable[..., None]], Effect]
 
 
-def effect_with_opts(priority_level: int):
-    def wrap(fn: Callable[..., None]):
-        return effect(fn, priority_level=priority_level)
+@overload
+def effect(fn: None = ..., *, priority_level=1) -> _TEffect_Fn:
+    ...
 
-    return wrap
+
+@overload
+def effect(
+    fn: Callable[..., None],
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+) -> Effect:
+    ...
+
+
+def effect(
+    fn: Optional[Callable[..., None]] = None,
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+) -> Union[_TEffect_Fn, Effect]:
+    kws = {"priority_level": priority_level, "debug_trigger": debug_trigger}
+
+    if fn:
+        return Effect(exec, fn, **kws)
+    else:
+
+        def wrap(fn: Callable[..., None]):
+            return Effect(exec, fn, **kws)
+
+        return wrap
 
 
 class computed(Generic[T]):
