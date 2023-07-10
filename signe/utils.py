@@ -31,11 +31,16 @@ def createSignal(value: T, comp: TSignalOptionInitComp[T] = None):
     return s.getValue, s.setValue
 
 
-_TEffect_Fn = Callable[[Callable[..., None]], Effect]
+_TEffect_Fn = Callable[[Callable[..., T]], Effect[T]]
 
 
 @overload
-def effect(fn: None = ..., *, priority_level=1) -> _TEffect_Fn:
+def effect(
+    fn: None = ...,
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+) -> _TEffect_Fn[None]:
     ...
 
 
@@ -45,7 +50,7 @@ def effect(
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
-) -> Effect:
+) -> Effect[None]:
     ...
 
 
@@ -54,7 +59,7 @@ def effect(
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
-) -> Union[_TEffect_Fn, Effect]:
+) -> Union[_TEffect_Fn[None], Effect[None]]:
     kws = {"priority_level": priority_level, "debug_trigger": debug_trigger}
 
     if fn:
@@ -67,33 +72,84 @@ def effect(
         return wrap
 
 
-class computed(Generic[T]):
-    def __init__(
-        self,
-        fn: Callable[[], T],
-        debug_trigger: Optional[Callable] = None,
-        priority_level=1,
-    ) -> None:
-        self.fn = fn
+@overload
+def computed(
+    fn: None = ...,
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+) -> Callable[[Callable[..., T]], Callable[..., T]]:
+    ...
 
-        def getter():
-            effect = Effect(exec, fn, debug_trigger, priority_level)
-            self.getter = effect
+
+@overload
+def computed(
+    fn: Callable[..., T],
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+) -> Callable[..., T]:
+    ...
+
+
+def computed(
+    fn: Optional[Callable[[], T]] = None,
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+) -> Union[Callable[[Callable[..., T]], Callable[..., T]], Callable[..., T]]:
+    kws = {"priority_level": priority_level, "debug_trigger": debug_trigger}
+
+    if fn:
+
+        def first():
+            nonlocal real_fn
+            effect = Effect(exec, fn, **kws)
+            real_fn = effect
             return effect.getValue()
 
-        self.getter = getter
+        real_fn = first
 
-    @staticmethod
-    def with_opts(priority_level=1, debug_trigger: Optional[Callable] = None):
-        def wrap(
-            fn: Callable[[], T],
-        ):
-            return computed(fn, debug_trigger, priority_level)
+        def wrap():
+            return real_fn()
 
         return wrap
 
-    def __call__(self, *args: Any, **kwds: Any) -> T:
-        return self.getter()  # type: ignore
+    else:
+
+        def wrap_cp(fn: Callable[[], T]):
+            return computed(fn, **kws)
+
+        return wrap_cp
+
+
+# class computed(Generic[T]):
+#     def __init__(
+#         self,
+#         fn: Callable[[], T],
+#         debug_trigger: Optional[Callable] = None,
+#         priority_level=1,
+#     ) -> None:
+#         self.fn = fn
+
+#         def getter():
+#             effect = Effect(exec, fn, debug_trigger, priority_level)
+#             self.getter = effect
+#             return effect.getValue()
+
+#         self.getter = getter
+
+#     @staticmethod
+#     def with_opts(priority_level=1, debug_trigger: Optional[Callable] = None):
+#         def wrap(
+#             fn: Callable[[], T],
+#         ):
+#             return computed(fn, debug_trigger, priority_level)
+
+#         return wrap
+
+#     def __call__(self, *args: Any, **kwds: Any) -> T:
+#         return self.getter()  # type: ignore
 
 
 def batch(fn: Callable[[], None]):
