@@ -737,6 +737,43 @@ class Test_effect_basic:
         set_dummy(None)
         assert spy1.calledTimes == 3
 
+    def test_should_not_trigger_if_condition_not_pass(self):
+        isPass, set_isPass = createSignal(True)
+
+        dummy, set_dummy = createSignal(None, comp=False)
+
+        @utils.fn
+        def spy1():
+            pass
+
+        @utils.fn
+        def spy_in_effect():
+            pass
+
+        @computed(debug_name="cp_spy1")
+        def cp_spy1():
+            spy1()
+            dummy()
+
+        @effect
+        def _():
+            spy_in_effect()
+            if isPass():
+                cp_spy1()
+
+        assert spy1.calledTimes == 1
+        assert spy_in_effect.calledTimes == 1
+
+        set_isPass(False)
+        assert spy1.calledTimes == 1
+        assert spy_in_effect.calledTimes == 2
+
+        # only trigger cp_spy1,
+        # but effect not track cp_spy1 this time
+        set_dummy(None)
+        assert spy1.calledTimes == 2
+        assert spy_in_effect.calledTimes == 2
+
 
 class Test_effect_internal:
     def test_effect_dep_records(self):
