@@ -141,7 +141,7 @@ class Effect(Generic[T]):
 
         self.__executor.current_execution_scheduler.add_effect(self)
 
-        for effect in self.__get_all_dep_effects():
+        for effect in self.__next_dep_effects:
             effect._push_scheduler()
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
