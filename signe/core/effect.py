@@ -24,6 +24,8 @@ class Effect(Generic[T]):
         fn: Callable[[], T],
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
+        debug_name: Optional[str] = None,
+        capture_parent_effect=True,
     ) -> None:
         Effect._g_id += 1
         self.id = Effect._g_id
@@ -34,6 +36,7 @@ class Effect(Generic[T]):
         self._state = EffectState.CURRENT
         self.__dep_signals: Set[Signal] = set()
         self.__priority_level = priority_level
+        self.__debug_name = debug_name
 
         """
         When one effect is triggered by another effect, 
@@ -63,6 +66,15 @@ class Effect(Generic[T]):
 
         self._debug_trigger = debug_trigger
 
+        """
+        This method must be executed before Method __run_fn. 
+        If an effect object is created 
+        during the execution of a parent effect object, 
+        it is considered as its child object.
+        """
+        if capture_parent_effect:
+            self.__try_add_self_to_parent_sub_effect()
+
         self.__run_fn()
         self.__init_no_deps = (
             len(self.__pre_dep_effects)
@@ -72,6 +84,12 @@ class Effect(Generic[T]):
 
     def __get_all_dep_effects(self):
         return chain(self.__pre_dep_effects, self.__next_dep_effects)
+
+    def __try_add_self_to_parent_sub_effect(self):
+        current_effect = self.__executor.effect_running_stack.get_current()
+
+        if current_effect is not None and current_effect is not self:
+            current_effect._add_sub_effect(self)
 
     @property
     def priority_level(self):
@@ -123,7 +141,7 @@ class Effect(Generic[T]):
 
         self.__executor.current_execution_scheduler.add_effect(self)
 
-        for effect in self.__get_all_dep_effects():
+        for effect in self.__next_dep_effects:
             effect._push_scheduler()
 
     def __call__(self, *args: Any, **kwds: Any) -> Any:
@@ -140,11 +158,6 @@ class Effect(Generic[T]):
 
     def __run_fn(self):
         self._cleanup_source_before_update()
-
-        current_effect = self.__executor.effect_running_stack.get_current()
-
-        if current_effect is not None and current_effect is not self:
-            current_effect._add_sub_effect(self)
 
         try:
             self.__executor.effect_running_stack.set_current(self)
@@ -199,8 +212,8 @@ class Effect(Generic[T]):
         self._cleanup_callbacks.clear()
 
     def _cleanup_sub_effects(self):
-        # for effect in self._sub_effects:
-        #     effect.dispose()
+        for effect in self._sub_effects:
+            effect.dispose()
 
         self._sub_effects.clear()
 
@@ -211,3 +224,6 @@ class Effect(Generic[T]):
 
     def _reset_age(self):
         self._age = 0
+
+    def __repr__(self) -> str:
+        return f"Effect(id ={self.id}, name={self.__debug_name})"

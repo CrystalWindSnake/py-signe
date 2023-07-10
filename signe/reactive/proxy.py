@@ -33,7 +33,7 @@ class CollectionsProxy(Proxy):
     def _create_signal(self, key: TKeySignalMapKey, value):
         signal = None
         if key not in self._keySignalMap:
-            signal = createSignal(value)
+            signal = createSignal(value,debug_name=str(key))
             self._keySignalMap[key] = signal
         else:
             signal = self._keySignalMap[key]

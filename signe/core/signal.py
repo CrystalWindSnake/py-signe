@@ -40,7 +40,11 @@ class Signal(Generic[T]):
     _g_id = 0
 
     def __init__(
-        self, executor: Executor, value: T, option: Optional[SignalOption[T]] = None
+        self,
+        executor: Executor,
+        value: T,
+        option: Optional[SignalOption[T]] = None,
+        debug_name: Optional[str] = None,
     ) -> None:
         Signal._g_id += 1
         self.id = Signal._g_id
@@ -49,6 +53,7 @@ class Signal(Generic[T]):
         self.__dep_effects: Set[Effect] = set()
         self.option = option or SignalOption[T]()
         self._pending = NOT_PENDING
+        self.__debug_name = debug_name
 
         self._option_comp = cast(Callable[[T, T], bool], self.option.comp)
 
@@ -97,3 +102,6 @@ class Signal(Generic[T]):
             return self.__hash__() == __value.__hash__()
 
         return False
+
+    def __repr__(self) -> str:
+        return f"Signal(id= {self.id} , name = {self.__debug_name})"
