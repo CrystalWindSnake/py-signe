@@ -154,14 +154,14 @@ class Test_signal_case:
             dummy_total = sum(1 for item in todos if item["done"])
             return dummy_total
 
-        total = computed(total_spy)
+        total = computed(total_spy, debug_name="total_spy")
 
         @utils.fn
         def show_spy():
             nonlocal dummy_show
             dummy_show = total()
 
-        effect(show_spy)
+        effect(show_spy, debug_name="show_spy")
 
         assert total_spy.calledTimes == 1
         assert show_spy.calledTimes == 1
