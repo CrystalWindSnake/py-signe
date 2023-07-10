@@ -24,6 +24,7 @@ class Effect(Generic[T]):
         fn: Callable[[], T],
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
+        debug_name: Optional[str] = None,
     ) -> None:
         Effect._g_id += 1
         self.id = Effect._g_id
@@ -34,6 +35,7 @@ class Effect(Generic[T]):
         self._state = EffectState.CURRENT
         self.__dep_signals: Set[Signal] = set()
         self.__priority_level = priority_level
+        self.__debug_name = debug_name
 
         """
         When one effect is triggered by another effect, 
@@ -211,3 +213,6 @@ class Effect(Generic[T]):
 
     def _reset_age(self):
         self._age = 0
+
+    def __repr__(self) -> str:
+        return f"Effect(id ={self.id}, name={self.__debug_name})"

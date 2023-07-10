@@ -25,8 +25,12 @@ TSetterParme = Union[T, Callable[[T], T]]
 TSetter = Callable[[TSetterParme[T]], T]
 
 
-def createSignal(value: T, comp: TSignalOptionInitComp[T] = None):
-    s = Signal(exec, value, SignalOption(comp))
+def createSignal(
+    value: T,
+    comp: TSignalOptionInitComp[T] = None,
+    debug_name: Optional[str] = None,
+):
+    s = Signal(exec, value, SignalOption(comp), debug_name)
 
     return s.getValue, s.setValue
 
@@ -40,6 +44,7 @@ def effect(
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
 ) -> _TEffect_Fn[None]:
     ...
 
@@ -50,6 +55,7 @@ def effect(
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
 ) -> Effect[None]:
     ...
 
@@ -59,8 +65,13 @@ def effect(
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
 ) -> Union[_TEffect_Fn[None], Effect[None]]:
-    kws = {"priority_level": priority_level, "debug_trigger": debug_trigger}
+    kws = {
+        "priority_level": priority_level,
+        "debug_trigger": debug_trigger,
+        "debug_name": debug_name,
+    }
 
     if fn:
         return Effect(exec, fn, **kws)
@@ -78,6 +89,7 @@ def computed(
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     ...
 
@@ -88,6 +100,7 @@ def computed(
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
 ) -> Callable[..., T]:
     ...
 
@@ -97,8 +110,13 @@ def computed(
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
 ) -> Union[Callable[[Callable[..., T]], Callable[..., T]], Callable[..., T]]:
-    kws = {"priority_level": priority_level, "debug_trigger": debug_trigger}
+    kws = {
+        "priority_level": priority_level,
+        "debug_trigger": debug_trigger,
+        "debug_name": debug_name,
+    }
 
     if fn:
 
