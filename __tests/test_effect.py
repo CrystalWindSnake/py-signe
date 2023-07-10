@@ -679,6 +679,37 @@ class Test_effect_basic:
         assert other.priority_level == 999
 
 
+    def test_should_auto_release_sub_effect(self):
+
+        isLogging,set_isLogging = createSignal(True)
+
+        dummy,set_dummy = createSignal(None,comp=False)
+
+        @utils.fn
+        def spy1():
+            pass
+
+        @effect
+        def _():
+            if isLogging():
+
+                @effect
+                def _():
+                    spy1()
+                    dummy()
+                    
+
+        assert spy1.calledTimes==1
+
+        set_dummy(None)
+        assert spy1.calledTimes==2
+
+        set_isLogging(False)
+        assert spy1.calledTimes==2
+        
+        set_dummy(None)
+        assert spy1.calledTimes==2
+
 class Test_effect_internal:
     def test_effect_dep_records(self):
         num, set_num = createSignal(0)
