@@ -1,6 +1,6 @@
 from signe.utils import (
     effect,
-    effect_with_opts,
+    # effect_with_opts,
     createSignal,
     computed,
     batch,

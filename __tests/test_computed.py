@@ -80,7 +80,7 @@ class Test_computed_case:
         def trigger_fn():
             pass
 
-        m1 = computed(fn_spy, trigger_fn)
+        m1 = computed(fn_spy, debug_trigger=trigger_fn)
 
         @effect
         def _():
@@ -106,7 +106,7 @@ class Test_computed_case:
         def trigger_fn():
             pass
 
-        @computed.with_opts(debug_trigger=trigger_fn)
+        @computed(debug_trigger=trigger_fn)
         def m1():
             return num() + 1
 
