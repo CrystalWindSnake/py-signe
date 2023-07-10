@@ -25,6 +25,7 @@ class Effect(Generic[T]):
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
+        capture_parent_effect=True,
     ) -> None:
         Effect._g_id += 1
         self.id = Effect._g_id
@@ -71,7 +72,8 @@ class Effect(Generic[T]):
         during the execution of a parent effect object, 
         it is considered as its child object.
         """
-        self.__try_add_self_to_parent_sub_effect()
+        if capture_parent_effect:
+            self.__try_add_self_to_parent_sub_effect()
 
         self.__run_fn()
         self.__init_no_deps = (

@@ -119,10 +119,17 @@ def computed(
     }
 
     if fn:
+        current_effect = exec.effect_running_stack.get_current()
 
         def first():
-            nonlocal real_fn
-            effect = Effect(exec, fn, **kws)
+            nonlocal real_fn, current_effect
+            effect = Effect(exec, fn, **kws, capture_parent_effect=False)
+
+            if current_effect is not None:
+                current_effect._add_sub_effect(effect)
+
+            del current_effect
+
             real_fn = effect
             return effect.getValue()
 

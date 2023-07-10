@@ -678,12 +678,10 @@ class Test_effect_basic:
         assert runner.priority_level == 1
         assert other.priority_level == 999
 
-
     def test_should_auto_release_sub_effect(self):
+        isLogging, set_isLogging = createSignal(True)
 
-        isLogging,set_isLogging = createSignal(True)
-
-        dummy,set_dummy = createSignal(None,comp=False)
+        dummy, set_dummy = createSignal(None, comp=False)
 
         @utils.fn
         def spy1():
@@ -697,18 +695,48 @@ class Test_effect_basic:
                 def _():
                     spy1()
                     dummy()
-                    
 
-        assert spy1.calledTimes==1
+        assert spy1.calledTimes == 1
 
         set_dummy(None)
-        assert spy1.calledTimes==2
+        assert spy1.calledTimes == 2
 
         set_isLogging(False)
-        assert spy1.calledTimes==2
+        assert spy1.calledTimes == 2
 
         set_dummy(None)
-        assert spy1.calledTimes==2
+        assert spy1.calledTimes == 2
+
+    def test_should_not_auto_release_external_cumputed(self):
+        isLogging, set_isLogging = createSignal(True)
+
+        dummy, set_dummy = createSignal(None, comp=False)
+
+        @utils.fn
+        def spy1():
+            pass
+
+        @computed(debug_name="cp_spy1")
+        def cp_spy1():
+            spy1()
+            dummy()
+
+        @effect(debug_name="isLogging")
+        def _():
+            if isLogging():
+                cp_spy1()
+
+        assert spy1.calledTimes == 1
+
+        set_dummy(None)
+        assert spy1.calledTimes == 2
+
+        set_isLogging(False)
+        assert spy1.calledTimes == 2
+
+        set_dummy(None)
+        assert spy1.calledTimes == 3
+
 
 class Test_effect_internal:
     def test_effect_dep_records(self):
