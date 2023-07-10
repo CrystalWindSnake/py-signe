@@ -65,6 +65,14 @@ class Effect(Generic[T]):
 
         self._debug_trigger = debug_trigger
 
+        """
+        This method must be executed before Method __run_fn. 
+        If an effect object is created 
+        during the execution of a parent effect object, 
+        it is considered as its child object.
+        """
+        self.__try_add_self_to_parent_sub_effect()
+
         self.__run_fn()
         self.__init_no_deps = (
             len(self.__pre_dep_effects)
@@ -74,6 +82,12 @@ class Effect(Generic[T]):
 
     def __get_all_dep_effects(self):
         return chain(self.__pre_dep_effects, self.__next_dep_effects)
+
+    def __try_add_self_to_parent_sub_effect(self):
+        current_effect = self.__executor.effect_running_stack.get_current()
+
+        if current_effect is not None and current_effect is not self:
+            current_effect._add_sub_effect(self)
 
     @property
     def priority_level(self):
@@ -143,11 +157,6 @@ class Effect(Generic[T]):
     def __run_fn(self):
         self._cleanup_source_before_update()
 
-        current_effect = self.__executor.effect_running_stack.get_current()
-
-        if current_effect is not None and current_effect is not self:
-            current_effect._add_sub_effect(self)
-
         try:
             self.__executor.effect_running_stack.set_current(self)
 
@@ -201,8 +210,8 @@ class Effect(Generic[T]):
         self._cleanup_callbacks.clear()
 
     def _cleanup_sub_effects(self):
-        # for effect in self._sub_effects:
-        #     effect.dispose()
+        for effect in self._sub_effects:
+            effect.dispose()
 
         self._sub_effects.clear()
 

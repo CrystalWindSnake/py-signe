@@ -706,7 +706,7 @@ class Test_effect_basic:
 
         set_isLogging(False)
         assert spy1.calledTimes==2
-        
+
         set_dummy(None)
         assert spy1.calledTimes==2
 
