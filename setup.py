@@ -15,12 +15,11 @@ test_requirements = ["pytest>=3"]
 setup(
     author="carson_jia",
     author_email="568166495@qq.com",
-    python_requires=">=3.7",
+    python_requires=">=3.8",
     classifiers=[
         "Intended Audience :: Developers",
         "License :: OSI Approved :: MIT License",
         "Natural Language :: English",
-        "Programming Language :: Python :: 3.7",
         "Programming Language :: Python :: 3.8",
     ],
     description="...",
