@@ -8,7 +8,7 @@ import signe
 with open("README.md", encoding="utf8") as readme_file:
     readme = readme_file.read()
 
-requirements = []
+requirements = ["typing_extensions"]
 
 test_requirements = ["pytest>=3"]
 
