@@ -229,11 +229,17 @@ class DictProxy(CollectionsProxy, UserDict, Generic[TDict]):
         return createReactive(value)
 
     def __setitem__(self, _key: Any, item: Any) -> None:
+        has_key = _key in self.data
         self.data[_key] = item
 
-        _, setter = self._try_get_signal(_key)
+        _, setter = self._try_get_signal(_key) # type: ignore
         if setter is not None:
             setter(item)
+
+        if not has_key:
+            @batch
+            def _():
+                self.__trigger_len()
 
     def __delitem__(self, key: Any) -> None:
         del self.data[key]
