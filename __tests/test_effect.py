@@ -164,6 +164,28 @@ class Test_effect_basic:
         obj["num"] = 99
         assert dummy == 99
 
+    def test_observe_set_key(self):
+        dummy = 0
+        obj = createReactive({1: "a1"})
+
+        @utils.fn
+        def lenSpy():
+            nonlocal dummy
+            dummy = len(obj)
+
+        effect(lenSpy)
+
+        assert dummy == 1
+        assert lenSpy.calledTimes == 1
+
+        obj[1] = "xx"
+        assert dummy == 1
+        assert lenSpy.calledTimes == 1
+
+        obj[2] = "value"
+        assert dummy == 2
+        assert lenSpy.calledTimes == 2
+
     @utils.mark_todo
     def test_observe_func_valued_prop(self):
         def oldFunc():
