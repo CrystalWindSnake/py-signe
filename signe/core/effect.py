@@ -227,6 +227,3 @@ class Effect(Generic[T]):
 
     def __repr__(self) -> str:
         return f"Effect(id ={self.id}, name={self.__debug_name})"
-
-    def __del__(self):
-        print("effect")
