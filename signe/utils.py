@@ -1,7 +1,7 @@
 from signe.core.runtime import Executor, BatchExecutionScheduler
 from signe.core.signal import Signal, SignalOption, TSignalOptionInitComp
 from signe.core.effect import Effect
-from signe.core.scope import Scope
+from signe.core.scope import Scope, IScope
 from contextlib import contextmanager
 
 from typing import (
@@ -86,6 +86,7 @@ def effect(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
 ) -> _TEffect_Fn[None]:
     ...
 
@@ -97,6 +98,7 @@ def effect(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
 ) -> Effect[None]:
     ...
 
@@ -107,6 +109,7 @@ def effect(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
 ) -> Union[_TEffect_Fn[None], Effect[None]]:
     kws = {
         "priority_level": priority_level,
@@ -115,11 +118,15 @@ def effect(
     }
 
     if fn:
-        return _GLOBAL_SCOPE_MANAGER.mark_effect(Effect(exec, fn, **kws))
+        res = Effect(exec, fn, **kws)
+        if scope:
+            scope.add_effect(res)
+        _GLOBAL_SCOPE_MANAGER.mark_effect(res)
+        return res
     else:
 
         def wrap(fn: Callable[..., None]):
-            return Effect(exec, fn, **kws)
+            return effect(fn, **kws, scope=scope)
 
         return wrap
 
@@ -131,6 +138,7 @@ def computed(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
 ) -> Callable[[Callable[..., T]], Callable[..., T]]:
     ...
 
@@ -142,6 +150,7 @@ def computed(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
 ) -> Callable[..., T]:
     ...
 
@@ -152,6 +161,7 @@ def computed(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
 ) -> Union[Callable[[Callable[..., T]], Callable[..., T]], Callable[..., T]]:
     kws = {
         "priority_level": priority_level,
@@ -166,6 +176,8 @@ def computed(
             nonlocal real_fn, current_effect
             effect = Effect(exec, fn, **kws, capture_parent_effect=False)
 
+            if scope:
+                scope.add_effect(effect)
             _GLOBAL_SCOPE_MANAGER.mark_effect(effect)
 
             if current_effect is not None:
@@ -186,7 +198,7 @@ def computed(
     else:
 
         def wrap_cp(fn: Callable[[], T]):
-            return computed(fn, **kws)
+            return computed(fn, **kws, scope=scope)
 
         return wrap_cp
 
