@@ -1,12 +1,12 @@
 from signe.core.runtime import Executor, BatchExecutionScheduler
 from signe.core.signal import Signal, SignalOption, TSignalOptionInitComp
 from signe.core.effect import Effect
+from signe.core.scope import Scope
+from contextlib import contextmanager
 
 from typing import (
-    Any,
     TypeVar,
     Callable,
-    Generic,
     Union,
     Sequence,
     overload,
@@ -23,6 +23,18 @@ TGetter = Callable[[], T]
 
 TSetterParme = Union[T, Callable[[T], T]]
 TSetter = Callable[[TSetterParme[T]], T]
+
+_GLOBAL_SCOPE: Optional[Scope] = None
+
+
+@contextmanager
+def scope():
+    global _GLOBAL_SCOPE
+    _GLOBAL_SCOPE = Scope()
+    yield
+    if _GLOBAL_SCOPE:
+        _GLOBAL_SCOPE.dispose()
+        _GLOBAL_SCOPE = None
 
 
 def createSignal(
@@ -74,7 +86,10 @@ def effect(
     }
 
     if fn:
-        return Effect(exec, fn, **kws)
+        res = Effect(exec, fn, **kws)
+        if _GLOBAL_SCOPE:
+            _GLOBAL_SCOPE.add_effect(res)
+        return res
     else:
 
         def wrap(fn: Callable[..., None]):
@@ -125,6 +140,9 @@ def computed(
             nonlocal real_fn, current_effect
             effect = Effect(exec, fn, **kws, capture_parent_effect=False)
 
+            if _GLOBAL_SCOPE:
+                _GLOBAL_SCOPE.add_effect(effect)
+
             if current_effect is not None:
                 current_effect._add_sub_effect(effect)
 
@@ -146,35 +164,6 @@ def computed(
             return computed(fn, **kws)
 
         return wrap_cp
-
-
-# class computed(Generic[T]):
-#     def __init__(
-#         self,
-#         fn: Callable[[], T],
-#         debug_trigger: Optional[Callable] = None,
-#         priority_level=1,
-#     ) -> None:
-#         self.fn = fn
-
-#         def getter():
-#             effect = Effect(exec, fn, debug_trigger, priority_level)
-#             self.getter = effect
-#             return effect.getValue()
-
-#         self.getter = getter
-
-#     @staticmethod
-#     def with_opts(priority_level=1, debug_trigger: Optional[Callable] = None):
-#         def wrap(
-#             fn: Callable[[], T],
-#         ):
-#             return computed(fn, debug_trigger, priority_level)
-
-#         return wrap
-
-#     def __call__(self, *args: Any, **kwds: Any) -> T:
-#         return self.getter()  # type: ignore
 
 
 def batch(fn: Callable[[], None]):
