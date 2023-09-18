@@ -6,6 +6,7 @@ from signe.utils import (
     batch,
     cleanup,
     on,
+    scope,
 )
 from signe.reactive.proxy import createReactive, isReactive
 
