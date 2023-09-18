@@ -2,22 +2,23 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     List,
-    NewType,
-    TypeVar,
-    Generic,
-    Callable,
-    Set,
-    Union,
-    Optional,
-    cast,
 )
 
+from typing_extensions import Protocol
 
 if TYPE_CHECKING:
     from .effect import Effect
 
 
-class Scope:
+class IScope(Protocol):
+    def add_effect(self, effect: Effect):
+        ...
+
+    def dispose(self):
+        ...
+
+
+class Scope(IScope):
     def __init__(self) -> None:
         self._effects: List[Effect] = []
 
