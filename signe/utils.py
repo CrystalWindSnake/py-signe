@@ -5,6 +5,7 @@ from signe.core.scope import Scope
 from contextlib import contextmanager
 
 from typing import (
+    List,
     TypeVar,
     Callable,
     Union,
@@ -24,17 +25,45 @@ TGetter = Callable[[], T]
 TSetterParme = Union[T, Callable[[T], T]]
 TSetter = Callable[[TSetterParme[T]], T]
 
-_GLOBAL_SCOPE: Optional[Scope] = None
+
+class GlobalScopeManager:
+    def __init__(self) -> None:
+        self._stack: List[Scope] = []
+
+    def _get_last_scope(self):
+        idx = len(self._stack) - 1
+        if idx < 0:
+            return None
+
+        return self._stack[idx]
+
+    def new_scope(self):
+        s = Scope()
+        self._stack.append(s)
+        return s
+
+    def dispose_scope(self):
+        s = self._get_last_scope()
+        if s:
+            s.dispose()
+            self._stack.pop()
+
+    def mark_effect(self, effect: Effect):
+        s = self._get_last_scope()
+        if s:
+            s.add_effect(effect)
+
+        return effect
+
+
+_GLOBAL_SCOPE_MANAGER = GlobalScopeManager()
 
 
 @contextmanager
 def scope():
-    global _GLOBAL_SCOPE
-    _GLOBAL_SCOPE = Scope()
+    _GLOBAL_SCOPE_MANAGER.new_scope()
     yield
-    if _GLOBAL_SCOPE:
-        _GLOBAL_SCOPE.dispose()
-        _GLOBAL_SCOPE = None
+    _GLOBAL_SCOPE_MANAGER.dispose_scope()
 
 
 def createSignal(
@@ -86,10 +115,7 @@ def effect(
     }
 
     if fn:
-        res = Effect(exec, fn, **kws)
-        if _GLOBAL_SCOPE:
-            _GLOBAL_SCOPE.add_effect(res)
-        return res
+        return _GLOBAL_SCOPE_MANAGER.mark_effect(Effect(exec, fn, **kws))
     else:
 
         def wrap(fn: Callable[..., None]):
@@ -140,8 +166,7 @@ def computed(
             nonlocal real_fn, current_effect
             effect = Effect(exec, fn, **kws, capture_parent_effect=False)
 
-            if _GLOBAL_SCOPE:
-                _GLOBAL_SCOPE.add_effect(effect)
+            _GLOBAL_SCOPE_MANAGER.mark_effect(effect)
 
             if current_effect is not None:
                 current_effect._add_sub_effect(effect)
