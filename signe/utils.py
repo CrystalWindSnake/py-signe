@@ -5,6 +5,8 @@ from signe.core.scope import Scope, IScope
 from contextlib import contextmanager
 
 from typing import (
+    Any,
+    Dict,
     List,
     TypeVar,
     Callable,
@@ -231,7 +233,9 @@ def _getter_calls(fns: Sequence[TGetter[T]]):
 
 @overload
 def on(
-    getter: Union[TGetter[T], Sequence[TGetter[T]]], fn: Callable[..., None]
+    getter: Union[TGetter[T], Sequence[TGetter[T]]],
+    fn: Callable[..., None],
+    effect_kws: Optional[Dict[str, Any]] = None,
 ) -> Effect[None]:
     ...
 
@@ -246,9 +250,12 @@ def on(
 def on(
     getter: Union[TGetter[T], Sequence[TGetter[T]]],
     fn: Optional[Callable[..., None]] = None,
+    effect_kws: Optional[Dict[str, Any]] = None,
 ):
     if fn is None:
-        return cast(Callable[[Callable], Effect[None]], _on(getter))
+        return cast(
+            Callable[[Callable], Effect[None]], _on(getter, effect_kws=effect_kws)
+        )
 
     return _on(getter)(fn)
 
@@ -256,6 +263,7 @@ def on(
 # immediate
 def _on(
     getter: Union[TGetter[T], Sequence[TGetter[T]]],
+    effect_kws: Optional[Dict[str, Any]] = None,
 ):
     getter_call = getter
     if isinstance(getter, Sequence):
@@ -269,7 +277,7 @@ def _on(
                 value = fn()
             return value
 
-        return effect(_on)
+        return effect(_on, **effect_kws or {})
 
     return warp
 
