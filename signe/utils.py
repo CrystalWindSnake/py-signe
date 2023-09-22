@@ -189,23 +189,25 @@ def computed(
             if global_scope:
                 _GLOBAL_SCOPE_MANAGER.mark_effect(effect)
 
-        def first():
-            nonlocal real_fn, current_effect
-            effect = Effect(exec, fn, **kws, capture_parent_effect=False)
+        def mark_sub_effect(
+            effect: Effect,
+            current_effect=current_effect,
+        ):
+            if current_effect is not None:
+                current_effect._add_sub_effect(effect)
 
-            mark_scope(effect)
-            # if current_effect is not None:
-            #     current_effect._add_sub_effect(effect)
+            del current_effect
 
-            # del current_effect
-
-            real_fn = effect
-            return effect.getValue()
-
-        real_fn = first
+        effect = None
 
         def wrap():
-            return real_fn()
+            nonlocal effect
+            if effect is None:
+                effect = Effect(exec, fn, **kws, capture_parent_effect=False)
+                mark_scope(effect)
+                mark_sub_effect(effect)
+
+            return effect()
 
         return wrap
 
