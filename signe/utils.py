@@ -50,12 +50,15 @@ class GlobalScopeManager:
             s.dispose()
             self._stack.pop()
 
-    def mark_effect(self, effect: Effect):
-        s = self._get_last_scope()
+    def mark_effect_with_scope(self, scope: Optional[Scope], effect: Effect):
+        s = scope
         if s:
             s.add_effect(effect)
 
         return effect
+
+    def mark_effect(self, effect: Effect):
+        return self.mark_effect_with_scope(self._get_last_scope(), effect)
 
 
 _GLOBAL_SCOPE_MANAGER = GlobalScopeManager()
@@ -123,7 +126,8 @@ def effect(
         res = Effect(exec, fn, **kws)
         if scope:
             scope.add_effect(res)
-        _GLOBAL_SCOPE_MANAGER.mark_effect(res)
+        else:
+            _GLOBAL_SCOPE_MANAGER.mark_effect(res)
         return res
     else:
 
@@ -174,18 +178,26 @@ def computed(
     if fn:
         current_effect = exec.effect_running_stack.get_current()
 
+        def mark_scope(
+            effect: Effect,
+            global_scope=_GLOBAL_SCOPE_MANAGER._get_last_scope(),
+        ):
+            if scope:
+                scope.add_effect(effect)
+                return
+
+            if global_scope:
+                _GLOBAL_SCOPE_MANAGER.mark_effect(effect)
+
         def first():
             nonlocal real_fn, current_effect
             effect = Effect(exec, fn, **kws, capture_parent_effect=False)
 
-            if scope:
-                scope.add_effect(effect)
-            _GLOBAL_SCOPE_MANAGER.mark_effect(effect)
+            mark_scope(effect)
+            # if current_effect is not None:
+            #     current_effect._add_sub_effect(effect)
 
-            if current_effect is not None:
-                current_effect._add_sub_effect(effect)
-
-            del current_effect
+            # del current_effect
 
             real_fn = effect
             return effect.getValue()

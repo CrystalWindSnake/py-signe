@@ -71,6 +71,40 @@ def test_should_release_with_computed(
     assert effect_del_spy.calledTimes == 8
 
 
+def test_should_not_release_computed_call_in_scope(
+    signal_del_spy: utils.fn, effect_del_spy: utils.fn
+):
+    num, set_num = createSignal(1)
+
+    def cp_1():
+        return num()
+
+    cp_1_spy = utils.fn(cp_1)
+
+    cp_1 = computed(cp_1_spy)
+
+    def temp_run():
+        with scope():
+
+            @effect
+            def _():
+                cp_1()
+
+    temp_run()
+
+    @effect
+    def _():
+        cp_1()
+
+    assert cp_1_spy.calledTimes == 1
+
+    set_num(2)
+    assert cp_1_spy.calledTimes == 2
+
+    # Only the effects defined within the scope should be released, not the computeds defined outside the scope.
+    assert effect_del_spy.calledTimes == 1
+
+
 def test_nested_scope(signal_del_spy: utils.fn, effect_del_spy: utils.fn):
     num, set_num = createSignal(1)
 
