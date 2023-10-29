@@ -249,6 +249,7 @@ def _getter_calls(fns: Sequence[TGetter[T]]):
 def on(
     getter: Union[TGetter[T], Sequence[TGetter[T]]],
     fn: Callable[..., None],
+    onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
 ) -> Effect[None]:
     ...
@@ -256,7 +257,9 @@ def on(
 
 @overload
 def on(
-    getter: Union[TGetter[T], Sequence[TGetter[T]]]
+    getter: Union[TGetter[T], Sequence[TGetter[T]]],
+    fn: Optional[Callable[..., None]] = None,
+    onchanges=False,
 ) -> Callable[[Callable], Effect[None]]:
     ...
 
@@ -264,19 +267,24 @@ def on(
 def on(
     getter: Union[TGetter[T], Sequence[TGetter[T]]],
     fn: Optional[Callable[..., None]] = None,
+    onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
 ):
+    call_kws = {"onchanges": onchanges, "effect_kws": effect_kws}
+
     if fn is None:
         return cast(
-            Callable[[Callable], Effect[None]], _on(getter, effect_kws=effect_kws)
+            Callable[[Callable], Effect[None]],
+            _on(getter, **call_kws),
         )
 
-    return _on(getter)(fn)
+    return _on(getter, **call_kws)(fn)
 
 
 # immediate
 def _on(
     getter: Union[TGetter[T], Sequence[TGetter[T]]],
+    onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
 ):
     getter_call = getter
@@ -285,7 +293,12 @@ def _on(
 
     def warp(fn: Callable[..., None]):
         def _on():
+            nonlocal onchanges
             getter_call()  # type: ignore
+
+            if onchanges:
+                onchanges = False
+                return
 
             with pause_capture():
                 value = fn()
