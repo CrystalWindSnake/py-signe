@@ -309,7 +309,7 @@ def _on(
 
     def warp(fn: Callable[..., None]):
         args_count = _get_func_args_count(fn)
-        prev_values = tuple(None for _ in range(args_count))
+        prev_values = None
 
         def _on():
             nonlocal onchanges, prev_values
@@ -317,7 +317,7 @@ def _on(
 
             states = (
                 WatchedState(cur, prev)
-                for cur, prev in zip(current_values, prev_values)
+                for cur, prev in zip(current_values, prev_values or current_values)
             )
 
             prev_values = current_values
