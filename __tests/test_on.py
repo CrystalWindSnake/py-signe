@@ -60,6 +60,25 @@ class Test_on:
         assert dummy1 == 100
         assert dummy2 == 99
 
+    def test_should_executed_twice(self):
+        result = []
+        num1, set_num1 = createSignal(1)
+        num2, set_num2 = createSignal(2)
+
+        cp_total = computed(lambda: num1() + num2())
+
+        @on([num1, num2, cp_total])
+        def _on2():
+            result.append(cp_total())
+
+        # change 1
+        @batch
+        def _():
+            set_num1(666)
+            set_num2(666)
+
+        assert result == [3, 666 + 666]
+
     def test_watch_state_by_batch(self):
         class RunState:
             def __init__(self, time: int) -> None:
