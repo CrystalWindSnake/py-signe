@@ -241,8 +241,7 @@ def cleanup(fn: Callable[[], None]):
 
 
 def _getter_calls(fns: Sequence[TGetter[T]]):
-    for fn in fns:
-        fn()
+    return tuple(fn() for fn in fns)
 
 
 @overload
@@ -281,28 +280,57 @@ def on(
     return _on(getter, **call_kws)(fn)
 
 
+import inspect
+from dataclasses import dataclass
+
+
+@dataclass(frozen=True)
+class WatchedState:
+    current: Any
+    previous: Any
+
+
+def _get_func_args_count(fn):
+    return len(inspect.getfullargspec(fn).args)
+
+
 # immediate
 def _on(
     getter: Union[TGetter[T], Sequence[TGetter[T]]],
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
 ):
-    getter_call = getter
-    if isinstance(getter, Sequence):
-        getter_call = lambda: _getter_calls(getter)
+    getters = getter
+    if not isinstance(getter, Sequence):
+        getters = [getter]
+
+    def getter_calls():
+        return _getter_calls(getters)  # type: ignore
 
     def warp(fn: Callable[..., None]):
+        args_count = _get_func_args_count(fn)
+        prev_values = None
+
         def _on():
-            nonlocal onchanges
-            getter_call()  # type: ignore
+            nonlocal onchanges, prev_values
+            current_values = getter_calls()  # type: ignore
+
+            states = (
+                WatchedState(cur, prev)
+                for cur, prev in zip(current_values, prev_values or current_values)
+            )
+
+            prev_values = current_values
 
             if onchanges:
                 onchanges = False
                 return
 
             with pause_capture():
-                value = fn()
-            return value
+                if args_count == 0:
+                    fn()
+                else:
+                    fn(*states)
 
         return effect(_on, **effect_kws or {})
 
