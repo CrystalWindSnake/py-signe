@@ -63,16 +63,17 @@ class ExecutionScheduler:
         count = 0
         self.__running = True
 
-        while len(self.__signal_updates) > 0 or len(self.__effect_updates) > 0:
-            self._run_signal_updates()
-            self._run_effect_updates()
+        try:
+            while len(self.__signal_updates) > 0 or len(self.__effect_updates) > 0:
+                self._run_signal_updates()
+                self._run_effect_updates()
 
-            count += 1
-            if count >= 10000:
-                raise Exception("exceeded the maximum number of execution rounds.")
-
-        self.__tick = 0
-        self.__running = False
+                count += 1
+                if count >= 10000:
+                    raise Exception("exceeded the maximum number of execution rounds.")
+        finally:
+            self.__tick = 0
+            self.__running = False
 
     def cleanup_signal_updates(self):
         self.__signal_updates.clear()
