@@ -5,6 +5,43 @@ from signe import createSignal, effect, computed, cleanup, createReactive, batch
 
 
 class Test_signal_case:
+    def test_should_work_fine_after_effecting_error(self):
+        num1, set_num1 = createSignal(1)
+
+        dummy = 0
+
+        @effect
+        def error_effect():
+            nonlocal dummy
+            if num1() == 99:
+                raise Exception("error")
+
+            dummy = num1()
+
+        try:
+            set_num1(99)
+        except Exception as e:
+            pass
+        finally:
+            pass
+
+        assert dummy == 1
+
+        num2, set_num2 = createSignal(1)
+
+        dummy2 = 0
+
+        @effect
+        def normal_effect():
+            nonlocal dummy2
+
+            dummy2 = num2()
+
+        assert dummy2 == 1
+
+        set_num2(666)
+        assert dummy2 == 666
+
     def test_memo_run_when_get_value(self):
         num, set_num = createSignal(1)
 
