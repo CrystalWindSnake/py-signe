@@ -126,8 +126,8 @@ class Test_signal_case:
             set_num1(50)
             set_num2(100)
 
-            assert num1() == 1
-            assert num2() == 10
+            assert num1() == 50
+            assert num2() == 100
 
             assert fn_spy.calledTimes == 1
             assert dummy == 11
