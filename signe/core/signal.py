@@ -1,7 +1,6 @@
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
-    NewType,
     TypeVar,
     Generic,
     Callable,
@@ -10,7 +9,6 @@ from typing import (
     Optional,
     cast,
 )
-from .consts import NOT_PENDING, is_not_pending
 
 
 if TYPE_CHECKING:
@@ -52,7 +50,6 @@ class Signal(Generic[T]):
         self.value = value
         self.__dep_effects: Set[Effect] = set()
         self.option = option or SignalOption[T]()
-        self._pending = NOT_PENDING
         self.__debug_name = debug_name
 
         self._option_comp = cast(Callable[[T, T], bool], self.option.comp)
@@ -68,16 +65,16 @@ class Signal(Generic[T]):
 
     def setValue(self, value: Union[T, Callable[[T], T]]) -> T:
         if isinstance(value, Callable):
-            value = value(self.value if is_not_pending(self._pending) else self._pending)  # type: ignore
+            value = value(self.value)  # type: ignore
 
         if self._option_comp(self.value, value):  # type: ignore
             return self.value  # type: ignore
 
         if len(self.__dep_effects) <= 0:
             self.value = value
-            return self.value
+            return self.value  # type: ignore
 
-        self._pending = value
+        self.value = value
         scheduler = self.__executor.current_execution_scheduler.add_signal(self)
 
         if not self.__executor.is_running:
@@ -86,8 +83,6 @@ class Signal(Generic[T]):
         return value  # type: ignore
 
     def update(self):
-        self.value = self._pending
-        self._pending = NOT_PENDING
         for sub in self.__dep_effects:
             sub._push_scheduler()
 
