@@ -15,6 +15,9 @@ class Executor:
         self.execution_scheduler_stack = Stack[ExecutionScheduler]()
         self.__defalut_executionScheduler = ExecutionScheduler()
 
+    def set_default_execution_scheduler(self, execution_scheduler: ExecutionScheduler):
+        self.__defalut_executionScheduler = execution_scheduler
+
     @property
     def current_execution_scheduler(self):
         return (
