@@ -1,9 +1,9 @@
-from signe.core.runtime import Executor, BatchExecutionScheduler
+from signe.core.runtime import Executor, BatchExecutionScheduler, ExecutionScheduler
 from signe.core.signal import Signal, SignalOption, TSignalOptionInitComp
 from signe.core.effect import Effect
 from signe.core.scope import Scope, IScope
 from contextlib import contextmanager
-
+from functools import lru_cache
 from typing import (
     Any,
     Dict,
@@ -20,7 +20,6 @@ from typing import (
 
 T = TypeVar("T")
 
-exec = Executor()
 
 TGetter = Callable[[], T]
 
@@ -64,6 +63,19 @@ class GlobalScopeManager:
 _GLOBAL_SCOPE_MANAGER = GlobalScopeManager()
 
 
+_executor_builder = None
+
+
+def set_executor(executor: Executor):
+    global _executor_builder
+    _executor_builder = executor
+
+
+@lru_cache(maxsize=1)
+def get_current_executor():
+    return _executor_builder or Executor()
+
+
 @contextmanager
 def scope():
     _GLOBAL_SCOPE_MANAGER.new_scope()
@@ -76,7 +88,7 @@ def createSignal(
     comp: TSignalOptionInitComp[T] = None,
     debug_name: Optional[str] = None,
 ):
-    s = Signal(exec, value, SignalOption(comp), debug_name)
+    s = Signal(get_current_executor(), value, SignalOption(comp), debug_name)
 
     return s.getValue, s.setValue
 
@@ -123,7 +135,7 @@ def effect(
     }
 
     if fn:
-        res = Effect(exec, fn, **kws)
+        res = Effect(get_current_executor(), fn, **kws)
         if scope:
             scope.add_effect(res)
         else:
@@ -176,7 +188,7 @@ def computed(
     }
 
     if fn:
-        current_effect = exec.effect_running_stack.get_current()
+        current_effect = get_current_executor().effect_running_stack.get_current()
 
         def mark_scope(
             effect: Effect,
@@ -203,7 +215,9 @@ def computed(
         def wrap():
             nonlocal effect
             if effect is None:
-                effect = Effect(exec, fn, **kws, capture_parent_effect=False)
+                effect = Effect(
+                    get_current_executor(), fn, **kws, capture_parent_effect=False
+                )
                 mark_scope(effect)
                 mark_sub_effect(effect)
 
@@ -220,22 +234,24 @@ def computed(
 
 
 def batch(fn: Callable[[], None]):
-    if isinstance(exec.current_execution_scheduler, BatchExecutionScheduler):
+    if isinstance(
+        get_current_executor().current_execution_scheduler, BatchExecutionScheduler
+    ):
         fn()
         return
 
     batch_exec = BatchExecutionScheduler()
 
     try:
-        exec.execution_scheduler_stack.set_current(batch_exec)
+        get_current_executor().execution_scheduler_stack.set_current(batch_exec)
         fn()
         batch_exec.run_batch()
     finally:
-        exec.execution_scheduler_stack.reset_current()
+        get_current_executor().execution_scheduler_stack.reset_current()
 
 
 def cleanup(fn: Callable[[], None]):
-    current_effect = exec.effect_running_stack.get_current()
+    current_effect = get_current_executor().effect_running_stack.get_current()
     if current_effect:
         current_effect.add_cleanup_callback(fn)
 
@@ -342,11 +358,11 @@ class pause_capture:
         self.__cur = None
 
     def __enter__(self):
-        if len(exec.effect_running_stack):
-            self.__cur = exec.effect_running_stack.reset_current()
+        if len(get_current_executor().effect_running_stack):
+            self.__cur = get_current_executor().effect_running_stack.reset_current()
 
     def __exit__(self, *_):
         if self.__cur:
-            exec.effect_running_stack.set_current(self.__cur)
+            get_current_executor().effect_running_stack.set_current(self.__cur)
 
         self.__cur = None
