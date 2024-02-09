@@ -1,6 +1,7 @@
 from signe.core.runtime import Executor, BatchExecutionScheduler, ExecutionScheduler
 from signe.core.signal import Signal, SignalOption, TSignalOptionInitComp
 from signe.core.effect import Effect
+from signe.core.computed import Computed
 from signe.core.scope import Scope, IScope
 from contextlib import contextmanager
 from functools import lru_cache
@@ -8,6 +9,7 @@ from typing import (
     Any,
     Dict,
     List,
+    Tuple,
     TypeVar,
     Callable,
     Union,
@@ -90,10 +92,16 @@ def createSignal(
 ):
     s = Signal(get_current_executor(), value, SignalOption(comp), debug_name)
 
-    return s.getValue, s.setValue
+    def getValue():
+        return s.value
+
+    def setValue(new: T):
+        s.value = new
+
+    return cast(Tuple[Callable[[], T], Callable[[T], None]], (getValue, setValue))
 
 
-_TEffect_Fn = Callable[[Callable[..., T]], Effect[T]]
+_TEffect_Fn = Callable[[Callable[..., T]], Effect]
 
 
 @overload
@@ -116,7 +124,7 @@ def effect(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
-) -> Effect[None]:
+) -> Effect:
     ...
 
 
@@ -127,7 +135,7 @@ def effect(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
-) -> Union[_TEffect_Fn[None], Effect[None]]:
+) -> Union[_TEffect_Fn[None], Effect]:
     kws = {
         "priority_level": priority_level,
         "debug_trigger": debug_trigger,
@@ -149,6 +157,10 @@ def effect(
         return wrap
 
 
+_T_computed = Callable[[], T]
+_T_computed_setter = Callable[[Callable[[], T]], _T_computed]
+
+
 @overload
 def computed(
     fn: None = ...,
@@ -157,19 +169,19 @@ def computed(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
-) -> Callable[[Callable[..., T]], Callable[..., T]]:
+) -> _T_computed_setter:
     ...
 
 
 @overload
 def computed(
-    fn: Callable[..., T],
+    fn: Callable[[], T],
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
-) -> Callable[..., T]:
+) -> _T_computed[T]:
     ...
 
 
@@ -180,7 +192,7 @@ def computed(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
-) -> Union[Callable[[Callable[..., T]], Callable[..., T]], Callable[..., T]]:
+) -> Union[_T_computed_setter, _T_computed[T]]:
     kws = {
         "priority_level": priority_level,
         "debug_trigger": debug_trigger,
@@ -188,43 +200,12 @@ def computed(
     }
 
     if fn:
-        current_effect = get_current_executor().effect_running_stack.get_current()
+        cp = Computed(get_current_executor(), fn, **kws)
 
-        def mark_scope(
-            effect: Effect,
-            global_scope=_GLOBAL_SCOPE_MANAGER._get_last_scope(),
-        ):
-            if scope:
-                scope.add_effect(effect)
-                return
+        def getter():
+            return cp.value
 
-            if global_scope:
-                _GLOBAL_SCOPE_MANAGER.mark_effect(effect)
-
-        def mark_sub_effect(
-            effect: Effect,
-            current_effect=current_effect,
-        ):
-            if current_effect is not None:
-                current_effect._add_sub_effect(effect)
-
-            del current_effect
-
-        effect = None
-
-        def wrap():
-            nonlocal effect
-            if effect is None:
-                effect = Effect(
-                    get_current_executor(), fn, **kws, capture_parent_effect=False
-                )
-                mark_scope(effect)
-                mark_sub_effect(effect)
-
-            return effect()
-
-        return wrap
-
+        return getter
     else:
 
         def wrap_cp(fn: Callable[[], T]):
@@ -233,9 +214,69 @@ def computed(
         return wrap_cp
 
 
+# def computed(
+#     fn: Optional[Callable[[], T]] = None,
+#     *,
+#     priority_level=1,
+#     debug_trigger: Optional[Callable] = None,
+#     debug_name: Optional[str] = None,
+#     scope: Optional[IScope] = None,
+# ) -> Union[Callable[[Callable[..., T]], Callable[..., T]], Callable[..., T]]:
+#     kws = {
+#         "priority_level": priority_level,
+#         "debug_trigger": debug_trigger,
+#         "debug_name": debug_name,
+#     }
+
+#     if fn:
+#         current_effect = get_current_executor().effect_running_stack.get_current()
+
+#         def mark_scope(
+#             effect: Effect,
+#             global_scope=_GLOBAL_SCOPE_MANAGER._get_last_scope(),
+#         ):
+#             if scope:
+#                 scope.add_effect(effect)
+#                 return
+
+#             if global_scope:
+#                 _GLOBAL_SCOPE_MANAGER.mark_effect(effect)
+
+#         def mark_sub_effect(
+#             effect: Effect,
+#             current_effect=current_effect,
+#         ):
+#             if current_effect is not None:
+#                 current_effect._add_sub_effect(effect)
+
+#             del current_effect
+
+#         effect = None
+
+#         def wrap():
+#             nonlocal effect
+#             if effect is None:
+#                 effect = Effect(
+#                     get_current_executor(), fn, **kws, capture_parent_effect=False
+#                 )
+#                 mark_scope(effect)
+#                 mark_sub_effect(effect)
+
+#             return effect()
+
+#         return wrap
+
+#     else:
+
+#         def wrap_cp(fn: Callable[[], T]):
+#             return computed(fn, **kws, scope=scope)
+
+#         return wrap_cp
+
+
 def batch(fn: Callable[[], None]):
     if isinstance(
-        get_current_executor().current_execution_scheduler, BatchExecutionScheduler
+        get_current_executor().get_current_scheduler(), BatchExecutionScheduler
     ):
         fn()
         return
@@ -251,9 +292,9 @@ def batch(fn: Callable[[], None]):
 
 
 def cleanup(fn: Callable[[], None]):
-    current_effect = get_current_executor().effect_running_stack.get_current()
-    if current_effect:
-        current_effect.add_cleanup_callback(fn)
+    current_caller = get_current_executor().get_running_caller()
+    if current_caller:
+        current_caller.add_cleanup(fn)
 
 
 def _getter_calls(fns: Sequence[TGetter[T]]):
@@ -266,7 +307,7 @@ def on(
     fn: Callable[..., None],
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
-) -> Effect[None]:
+) -> Effect:
     ...
 
 
@@ -275,7 +316,7 @@ def on(
     getter: Union[TGetter[T], Sequence[TGetter[T]]],
     fn: Optional[Callable[..., None]] = None,
     onchanges=False,
-) -> Callable[[Callable], Effect[None]]:
+) -> Callable[[Callable], Effect]:
     ...
 
 
@@ -289,7 +330,7 @@ def on(
 
     if fn is None:
         return cast(
-            Callable[[Callable], Effect[None]],
+            Callable[[Callable], Effect],
             _on(getter, **call_kws),
         )
 
@@ -355,14 +396,18 @@ def _on(
 
 class pause_capture:
     def __init__(self) -> None:
-        self.__cur = None
+        self._current_scheduler = None
 
     def __enter__(self):
-        if len(get_current_executor().effect_running_stack):
-            self.__cur = get_current_executor().effect_running_stack.reset_current()
+        if len(get_current_executor().execution_scheduler_stack):
+            self._current_scheduler = (
+                get_current_executor().execution_scheduler_stack.reset_current()
+            )
 
     def __exit__(self, *_):
-        if self.__cur:
-            get_current_executor().effect_running_stack.set_current(self.__cur)
+        if self._current_scheduler:
+            get_current_executor().execution_scheduler_stack.set_current(
+                self._current_scheduler
+            )
 
-        self.__cur = None
+        self._current_scheduler = None

@@ -1,103 +1,102 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Set, Dict
+from typing import TYPE_CHECKING, Iterable, List, Dict
+from signe.core.consts import EffectState
+
+from signe.core.mixins import CallerMixin, GetterMixin
 from .collections import Stack
 
-from .effect import Effect
 
-if TYPE_CHECKING:
-    from .signal import Signal
+# if TYPE_CHECKING:
 
 
 class Executor:
     def __init__(self) -> None:
-        self._observers: Set[Signal] = set()
-        self.effect_running_stack = Stack[Effect]()
+        self._caller_running_stack = Stack[CallerMixin]()
         self.execution_scheduler_stack = Stack[ExecutionScheduler]()
         self.__defalut_executionScheduler = ExecutionScheduler()
 
     def set_default_execution_scheduler(self, execution_scheduler: ExecutionScheduler):
         self.__defalut_executionScheduler = execution_scheduler
 
-    @property
-    def current_execution_scheduler(self):
+    def get_current_scheduler(self):
         return (
             self.execution_scheduler_stack.get_current()
             or self.__defalut_executionScheduler
         )
 
+    def mark_running_caller(self, caller: CallerMixin):
+        self._caller_running_stack.set_current(caller)
+
+    def reset_running_caller(self, caller: CallerMixin):
+        self._caller_running_stack.reset_current()
+
     @property
     def is_running(self):
         return (
-            self.current_execution_scheduler.is_running
-            or len(self.effect_running_stack) > 0
+            self.get_current_scheduler().is_running
+            or len(self._caller_running_stack) > 0
         )
+
+    def get_running_caller(self):
+        return self._caller_running_stack.get_current()
 
 
 class ExecutionScheduler:
     def __init__(self) -> None:
-        self.__tick = 0
-        self.__signal_updates: Dict[Signal, None] = {}
-        self.__effect_updates: Dict[Effect, None] = {}
+        self._getter_change_points: Dict[GetterMixin, None] = {}
+        self.__effect_updates: Dict[CallerMixin, None] = {}
         self.__running = False
-
-    @property
-    def tick(self):
-        return self.__tick
-
-    def add_signal(self, signal: Signal):
-        self.__signal_updates[signal] = None
-        return self
-
-    def add_effect(self, effect: Effect):
-        self.__effect_updates[effect] = None
-        return self
-
-    def next_tick(self):
-        self.__tick += 1
-        return self
 
     @property
     def is_running(self):
         return self.__running
 
+    def mark_change_point(self, getter: GetterMixin):
+        self._getter_change_points[getter] = None
+
     def run(self):
-        self.__effect_updates.clear()
-        self.next_tick()
         count = 0
         self.__running = True
 
         try:
-            while len(self.__signal_updates) > 0 or len(self.__effect_updates) > 0:
-                self._run_signal_updates()
+            while len(self._getter_change_points) > 0 or len(self.__effect_updates) > 0:
+                self._run_getter_updates()
                 self._run_effect_updates()
 
                 count += 1
                 if count >= 10000:
                     raise Exception("exceeded the maximum number of execution rounds.")
         finally:
-            self.__tick = 0
             self.__running = False
 
-    def cleanup_signal_updates(self):
-        self.__signal_updates.clear()
+    def _run_getter_updates(self):
+        for getter in self._getter_change_points:
+            effects = self.__get_pending_effects(getter)
+            for effect in effects:
+                self.__effect_updates[effect] = None
 
-    def cleanup_effect_updates(self):
-        self.__effect_updates.clear()
-
-    def _run_signal_updates(self):
-        signals = list(self.__signal_updates.keys())
-        for s in signals:
-            s.update()
-
-        self.cleanup_signal_updates()
+        self._getter_change_points.clear()
 
     def _run_effect_updates(self):
-        effects = sorted(self.__effect_updates.keys(), key=lambda x: x.priority_level)
-        for s in effects:
-            s.update()
-            s._reset_age()
+        for effect in self.__effect_updates:
+            effect.update()
 
-        self.cleanup_effect_updates()
+        self.__effect_updates.clear()
+
+    def __get_pending_effects(self, getter: GetterMixin) -> Iterable[CallerMixin]:
+        stack: List[CallerMixin] = list(getter.get_callers())
+        result: List[CallerMixin] = []
+
+        while len(stack):
+            current = stack.pop()
+
+            if isinstance(current, GetterMixin):
+                stack.extend(current.get_callers())
+
+            elif current.is_effect and current.is_pedding:
+                result.append(current)
+
+        return result
 
 
 class BatchExecutionScheduler(ExecutionScheduler):

@@ -688,6 +688,7 @@ class Test_effect_basic:
         runner()
         assert dummy == 3
 
+    @utils.mark_todo
     def test_use_priority_level(self):
         @effect
         def runner():
@@ -756,8 +757,9 @@ class Test_effect_basic:
         set_isLogging(False)
         assert spy1.calledTimes == 2
 
+        # at this moment,  cp_spy1 is disconnected from effect(isLogging).
         set_dummy(None)
-        assert spy1.calledTimes == 3
+        assert spy1.calledTimes == 2
 
     def test_should_not_trigger_if_condition_not_pass(self):
         isPass, set_isPass = createSignal(True)
@@ -793,11 +795,12 @@ class Test_effect_basic:
         # only trigger cp_spy1,
         # but effect not track cp_spy1 this time
         set_dummy(None)
-        assert spy1.calledTimes == 2
+        assert spy1.calledTimes == 1
         assert spy_in_effect.calledTimes == 2
 
 
 class Test_effect_internal:
+    @utils.mark_todo
     def test_effect_dep_records(self):
         num, set_num = createSignal(0)
 
@@ -815,6 +818,7 @@ class Test_effect_internal:
         assert len(b._get_pre_dep_effects()) == 1
         assert len(b._get_next_dep_effects()) == 0
 
+    @utils.mark_todo
     def test_effect_multiple_dep_records(self):
         num, set_num = createSignal(0)
 

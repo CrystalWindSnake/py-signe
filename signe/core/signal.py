@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
+    Iterable,
+    Sequence,
     TypeVar,
     Generic,
     Callable,
@@ -9,11 +11,14 @@ from typing import (
     Optional,
     cast,
 )
+from signe.core.idGenerator import IdGen
+
+from signe.core.mixins import GetterMixin, CallerMixin
 
 
 if TYPE_CHECKING:
     from .runtime import Executor
-    from .effect import Effect
+
 
 T = TypeVar("T")
 
@@ -34,8 +39,8 @@ class SignalOption(Generic[T]):
         self.comp: TSignalOptionComp = comp  # type: ignore
 
 
-class Signal(Generic[T]):
-    _g_id = 0
+class Signal(Generic[T], GetterMixin):
+    _id_gen = IdGen("Signal")
 
     def __init__(
         self,
@@ -44,50 +49,66 @@ class Signal(Generic[T]):
         option: Optional[SignalOption[T]] = None,
         debug_name: Optional[str] = None,
     ) -> None:
-        Signal._g_id += 1
-        self.id = Signal._g_id
-        self.__executor = executor
-        self.value = value
-        self.__dep_effects: Set[Effect] = set()
+        self.__id = Signal._id_gen.new()
+        self._executor = executor
+        self._value = value
         self.option = option or SignalOption[T]()
         self.__debug_name = debug_name
-
+        self._callers: Set[CallerMixin] = set()
         self._option_comp = cast(Callable[[T, T], bool], self.option.comp)
 
-    def getValue(self) -> T:
-        current_effect = self.__executor.effect_running_stack.get_current()
+    @property
+    def id(self):
+        return self.__id
 
-        if current_effect:
-            self.__dep_effects.add(current_effect)
-            current_effect.add_dep_signal(self)
+    @property
+    def value(self):
+        return self.__getValue()
 
-        return self.value  # type: ignore
+    @value.setter
+    def value(self, new: T):
+        self.__setValue(new)
 
-    def setValue(self, value: Union[T, Callable[[T], T]]) -> T:
+    def remove_caller(self, caller: CallerMixin):
+        self._callers.remove(caller)
+
+    def __getValue(self) -> T:
+        running_caller = self._executor.get_running_caller()
+
+        if running_caller:
+            self.__collecting_dependencies(running_caller)
+        return self._value  # type: ignore
+
+    def __collecting_dependencies(self, running_effect: CallerMixin):
+        self._callers.add(running_effect)
+        running_effect.add_upstream_ref(self)
+
+    def __setValue(self, value: Union[T, Callable[[T], T]]):
         if isinstance(value, Callable):
             value = value(self.value)  # type: ignore
 
         if self._option_comp(self.value, value):  # type: ignore
             return self.value  # type: ignore
 
-        if len(self.__dep_effects) <= 0:
-            self.value = value
-            return self.value  # type: ignore
+        self._value = value
 
-        self.value = value
-        scheduler = self.__executor.current_execution_scheduler.add_signal(self)
+        scheduler = self._executor.get_current_scheduler()
+        scheduler.mark_change_point(self)
 
-        if not self.__executor.is_running:
+        self._update_caller_state()
+
+        if not self._executor.is_running:
             scheduler.run()
 
-        return value  # type: ignore
+    def remove_getter(self, caller: CallerMixin):
+        return self._callers.remove(caller)
 
-    def update(self):
-        for sub in self.__dep_effects:
-            sub._push_scheduler()
+    def get_callers(self) -> Iterable[CallerMixin]:
+        return tuple(self._callers)
 
-    def cleanup_dep_effect(self, effect: Effect):
-        self.__dep_effects.remove(effect)
+    def _update_caller_state(self):
+        for caller in self._callers:
+            caller.update_pending(self)
 
     def __hash__(self) -> int:
         return hash(self.id)

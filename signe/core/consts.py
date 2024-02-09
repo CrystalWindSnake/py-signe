@@ -1,21 +1,15 @@
-class NotPending:
-    pass
-
-    def __bool__(self):
-        return False
-
-
-NOT_PENDING = NotPending()
-
-
-def is_not_pending(value):
-    return isinstance(value, NotPending)
-
-
-from enum import Enum
+from enum import Enum, auto
 
 
 class EffectState(Enum):
-    CURRENT = 0
-    STALE = 1
-    RUNNING = 2
+    CURRENT = auto()
+    PENDING = auto()
+    RUNNING = auto()
+    STALE = auto()
+
+
+class ComputedState(Enum):
+    INIT = auto()
+    PENDING = auto()
+    RUNNING = auto()
+    STALE = auto()

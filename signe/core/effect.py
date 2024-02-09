@@ -1,13 +1,19 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, TypeVar, Set, Callable, Optional, Generic, cast
+from typing import (
+    TYPE_CHECKING,
+    List,
+    Set,
+    Callable,
+    Optional,
+    cast,
+)
+
+from signe.core.idGenerator import IdGen
+from signe.core.mixins import GetterMixin, CallerMixin
 from .consts import EffectState
-from itertools import chain
 
 if TYPE_CHECKING:
     from .runtime import Executor
-    from .signal import Signal
-
-T = TypeVar("T")
 
 
 class EffectOption:
@@ -15,215 +21,114 @@ class EffectOption:
         self.level = level
 
 
-class Effect(Generic[T]):
-    _g_id = 0
+class Effect(CallerMixin):
+    _id_gen = IdGen("Effect")
 
     def __init__(
         self,
         executor: Executor,
-        fn: Callable[[], T],
+        fn: Callable[[], None],
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
         capture_parent_effect=True,
     ) -> None:
-        Effect._g_id += 1
-        self.id = Effect._g_id
-        self.__executor = executor
-        self.value: Optional[T] = None
+        self.__id = self._id_gen.new()
+        self._executor = executor
         self.fn = fn
-        self._age = 0
-        self._state = EffectState.CURRENT
-        self.__dep_signals: Set[Signal] = set()
-        self.__priority_level = priority_level
+        self._upstream_refs: Set[GetterMixin] = set()
         self.__debug_name = debug_name
-
-        """
-        When one effect is triggered by another effect, 
-        the former belongs to a pre dependency 
-        and the latter belongs to a next dependency.
-
-        @effect
-        def a():
-            return 1
-
-        @effect
-        def b():
-            return a()
-
-        a is pre dep effect
-        b is next dep effect
-
-        b should be push to next dep of a
-        a should be push to pre dep of b
-        """
-        self.__pre_dep_effects: Set[Effect] = set()
-        self.__next_dep_effects: Set[Effect] = set()
-
-        self._sub_effects: list[Effect] = []
-
-        self._cleanup_callbacks: list[Callable] = []
-
         self._debug_trigger = debug_trigger
+        self._state = EffectState.PENDING
+        self._pending_deps: Set[GetterMixin] = set()
+        self._cleanups: List[Callable[[], None]] = []
+        # self.priority_level = priority_level
 
-        """
-        This method must be executed before Method __run_fn. 
-        If an effect object is created 
-        during the execution of a parent effect object, 
-        it is considered as its child object.
-        """
-        if capture_parent_effect:
-            self.__try_add_self_to_parent_sub_effect()
+        self._sub_effects: List[Effect] = []
 
-        self.__run_fn()
-        self.__init_no_deps = (
-            len(self.__pre_dep_effects)
-            + len(self.__next_dep_effects)
-            + len(self.__dep_signals)
-        ) <= 0
+        running_caller = self._executor.get_running_caller()
+        if running_caller and running_caller.is_effect:
+            cast(Effect, running_caller).made_sub_effect(self)
 
-    def __get_all_dep_effects(self):
-        return chain(self.__pre_dep_effects, self.__next_dep_effects)
-
-    def __try_add_self_to_parent_sub_effect(self):
-        current_effect = self.__executor.effect_running_stack.get_current()
-
-        if current_effect is not None and current_effect is not self:
-            current_effect._add_sub_effect(self)
+        self.update()
 
     @property
-    def priority_level(self):
-        return self.__priority_level
+    def id(self):
+        return self.__id
 
-    def _get_pre_dep_effects(self):
-        return list(self.__pre_dep_effects)
+    @property
+    def state(self):
+        return self._state
 
-    def _get_next_dep_effects(self):
-        return list(self.__next_dep_effects)
+    @property
+    def is_effect(self) -> bool:
+        return True
 
-    def _add_sub_effect(self, effect: Effect):
-        self._sub_effects.append(effect)
+    @property
+    def is_pedding(self) -> bool:
+        return self._state == EffectState.PENDING
 
-    def add_dep_signal(self, signal: Signal):
-        self.__dep_signals.add(signal)
+    def made_sub_effect(self, sub: Effect):
+        self._sub_effects.append(sub)
 
-    def add_pre_dep_effect(self, effect: Effect):
-        self.__pre_dep_effects.add(effect)
-
-    def add_next_dep_effect(self, effect: Effect):
-        self.__next_dep_effects.add(effect)
-
-    def getValue(self):
-        if not self.__init_no_deps:
-            tick = self.__executor.current_execution_scheduler.tick
-            current_effect = self.__executor.effect_running_stack.get_current()
-
-            if current_effect:
-                if self._age == tick:
-                    if self._state == EffectState.RUNNING:
-                        raise Exception("circular running")
-
-                    self.update()
-
-                self.add_next_dep_effect(current_effect)
-                current_effect.add_pre_dep_effect(self)
-
-        return cast(T, self.value)
-
-    def _push_scheduler(self):
-        tick = self.__executor.current_execution_scheduler.tick
-
-        if self._age >= tick:
-            return
-
-        self._age = tick
-        self._state = EffectState.STALE
-
-        self.__executor.current_execution_scheduler.add_effect(self)
-
-        for effect in self.__next_dep_effects:
-            effect._push_scheduler()
-
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return self.getValue()
+    def add_upstream_ref(self, getter: GetterMixin):
+        self._upstream_refs.add(getter)
 
     def update(self):
-        if self._state != EffectState.STALE:
+        if not self.is_pedding:
             return
-
-        self.__run_fn()
-
-    def add_cleanup_callback(self, callback: Callable):
-        self._cleanup_callbacks.append(callback)
-
-    def __run_fn(self):
-        self._cleanup_source_before_update()
-
         try:
-            self.__executor.effect_running_stack.set_current(self)
-
+            self._exec_cleanups()
+            self._executor.mark_running_caller(self)
             self._state = EffectState.RUNNING
 
-            self.cleanup_deps()
-
-            self.value = self.fn()
+            self._clear_all_deps()
+            self._dispose_sub_effects()
+            self.fn()
             if self._debug_trigger:
                 self._debug_trigger()
 
-            self._state = EffectState.CURRENT
-
         finally:
-            self.__executor.effect_running_stack.reset_current()
+            self._state = EffectState.STALE
+            self._executor.reset_running_caller(self)
 
-    def cleanup_dep_effect(self, effect: Effect):
-        if effect in self.__pre_dep_effects:
-            self.__pre_dep_effects.remove(effect)
+    def update_pending(self, getter: GetterMixin, is_set_pending=True):
+        if is_set_pending:
+            self._pending_deps.add(getter)
+        else:
+            self._pending_deps.remove(getter)
 
-        if effect in self.__next_dep_effects:
-            self.__next_dep_effects.remove(effect)
+        cur_is_pending = len(self._pending_deps) > 0
 
-    def cleanup_deps(self):
-        for s in self.__dep_signals:
-            s.cleanup_dep_effect(self)
+        if cur_is_pending:
+            self._state = EffectState.PENDING
 
-        self.__dep_signals.clear()
+    def _clear_all_deps(self):
+        for getter in self._upstream_refs:
+            getter.remove_caller(self)
 
-        for effect in self.__get_all_dep_effects():
-            effect.cleanup_dep_effect(self)
+        self._upstream_refs.clear()
 
-        self.__pre_dep_effects.clear()
-        self.__next_dep_effects.clear()
+    def dispose(self):
+        self._pending_deps.clear()
+        self._clear_all_deps()
+        self._exec_cleanups()
+        self._dispose_sub_effects()
 
-    def __hash__(self) -> int:
-        return hash(self.id)
-
-    def __eq__(self, __value: object) -> bool:
-        if isinstance(__value, self.__class__):
-            return self.__hash__() == __value.__hash__()
-
-        return False
-
-    def _cleanup_source_before_update(self):
-        self._cleanup_sub_effects()
-
-        for cb in self._cleanup_callbacks:
-            cb()
-
-        self._cleanup_callbacks.clear()
-
-    def _cleanup_sub_effects(self):
-        for effect in self._sub_effects:
-            effect.dispose()
+    def _dispose_sub_effects(self):
+        for sub in self._sub_effects:
+            sub.dispose()
 
         self._sub_effects.clear()
 
-    def dispose(self):
-        self._cleanup_sub_effects()
-        self.cleanup_deps()
-        # self.fn = None
+    def _exec_cleanups(self):
+        for fn in self._cleanups:
+            fn()
 
-    def _reset_age(self):
-        self._age = 0
+        self._cleanups.clear()
+
+    def add_cleanup(self, fn: Callable[[], None]):
+        self._cleanups.append(fn)
 
     def __repr__(self) -> str:
         return f"Effect(id ={self.id}, name={self.__debug_name})"
