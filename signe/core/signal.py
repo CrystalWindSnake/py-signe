@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
     Iterable,
-    Sequence,
     TypeVar,
     Generic,
     Callable,
@@ -85,10 +84,10 @@ class Signal(Generic[T], GetterMixin):
 
     def __setValue(self, value: Union[T, Callable[[T], T]]):
         if isinstance(value, Callable):
-            value = value(self.value)  # type: ignore
+            value = value(self._value)  # type: ignore
 
-        if self._option_comp(self.value, value):  # type: ignore
-            return self.value  # type: ignore
+        if self._option_comp(self._value, value):  # type: ignore
+            return
 
         self._value = value
 
