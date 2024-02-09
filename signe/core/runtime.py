@@ -1,12 +1,8 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Iterable, List, Dict
-from signe.core.consts import EffectState
+from typing import Iterable, List, Dict
 
 from signe.core.mixins import CallerMixin, GetterMixin
 from .collections import Stack
-
-
-# if TYPE_CHECKING:
 
 
 class Executor:
