@@ -30,13 +30,6 @@ class Executor:
     def reset_running_caller(self, caller: CallerMixin):
         self._caller_running_stack.reset_current()
 
-    @property
-    def is_running(self):
-        return (
-            self.get_current_scheduler().is_running
-            or len(self._caller_running_stack) > 0
-        )
-
     def get_running_caller(self):
         return self._caller_running_stack.get_current()
 

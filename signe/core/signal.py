@@ -96,7 +96,7 @@ class Signal(Generic[T], GetterMixin):
 
         self._update_caller_state()
 
-        if not self._executor.is_running:
+        if not scheduler.is_running:
             scheduler.run()
 
     def remove_getter(self, caller: CallerMixin):
