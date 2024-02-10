@@ -56,6 +56,10 @@ class Computed(Generic[T], CallerMixin, GetterMixin):
     def is_pedding(self) -> bool:
         return self._state == ComputedState.PENDING
 
+    @property
+    def is_need_update(self) -> bool:
+        return False
+
     def remove_caller(self, caller: CallerMixin):
         self._callers.remove(caller)
 
@@ -73,6 +77,13 @@ class Computed(Generic[T], CallerMixin, GetterMixin):
             self.update()
 
         return cast(T, self._value)
+
+    def made_upstream_confirm_state(self):
+        pass
+
+    def confirm_state(self):
+        if self.is_pedding:
+            self.update()
 
     def update(self):
         try:
@@ -102,7 +113,9 @@ class Computed(Generic[T], CallerMixin, GetterMixin):
     def add_upstream_ref(self, getter: GetterMixin):
         self._upstream_refs.add(getter)
 
-    def update_pending(self, getter: GetterMixin, is_set_pending=True):
+    def update_pending(
+        self, getter: GetterMixin, is_change_point: bool = True, is_set_pending=True
+    ):
         pre_is_pending = len(self._pending_deps) > 0
 
         if is_set_pending:

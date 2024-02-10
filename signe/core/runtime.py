@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Iterable, List, Dict
+from typing import Iterable, List, Dict, TYPE_CHECKING, cast
 
 from signe.core.mixins import CallerMixin, GetterMixin
 from .collections import Stack
@@ -70,6 +70,12 @@ class ExecutionScheduler:
         for effect in self.__effect_updates:
             if effect.is_pedding:
                 effect.update()
+
+            # if effect.is_need_update:
+            #     effect.update()
+            # else:
+            #     # Let the upstream node determine the state
+            #     effect.made_upstream_confirm_state()
 
         self.__effect_updates.clear()
 

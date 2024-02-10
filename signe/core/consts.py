@@ -4,6 +4,7 @@ from enum import Enum, auto
 class EffectState(Enum):
     CURRENT = auto()
     PENDING = auto()
+    NEED_UPDATE = auto()
     RUNNING = auto()
     STALE = auto()
 

@@ -69,11 +69,23 @@ class Effect(CallerMixin):
     def is_pedding(self) -> bool:
         return self._state == EffectState.PENDING
 
+    @property
+    def is_need_update(self) -> bool:
+        return self._state == EffectState.NEED_UPDATE
+
     def made_sub_effect(self, sub: Effect):
         self._sub_effects.append(sub)
 
     def add_upstream_ref(self, getter: GetterMixin):
         self._upstream_refs.add(getter)
+
+    def made_upstream_confirm_state(self):
+        for us in self._upstream_refs:
+            if isinstance(us, CallerMixin) and us.is_pedding:
+                us.confirm_state()
+
+    def confirm_state(self):
+        return self.made_upstream_confirm_state()
 
     def update(self):
         try:

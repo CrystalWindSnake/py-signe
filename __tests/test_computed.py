@@ -46,6 +46,8 @@ class Test_computed_case:
         assert fn_spy.calledTimes == 1
 
         set_num(2)
+        assert fn_spy.calledTimes == 1
+
         value = m1()
         assert value == 2
         assert fn_spy.calledTimes == 2
