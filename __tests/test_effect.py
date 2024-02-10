@@ -353,7 +353,7 @@ class Test_effect_basic:
 
     def test_return__new_reactive_version_of_the_function(self):
         def greet():
-            return "hello world"
+            print("hello world")
 
         effect1 = effect(greet)
         effect2 = effect(greet)

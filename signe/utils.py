@@ -118,7 +118,7 @@ def effect(
 
 @overload
 def effect(
-    fn: Callable[..., None],
+    fn: Callable[[], None],
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
@@ -129,7 +129,7 @@ def effect(
 
 
 def effect(
-    fn: Optional[Callable[..., None]] = None,
+    fn: Optional[Callable[[], None]] = None,
     *,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,

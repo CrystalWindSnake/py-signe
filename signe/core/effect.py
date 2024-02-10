@@ -1,6 +1,7 @@
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
+    Any,
     List,
     Set,
     Callable,
@@ -75,8 +76,6 @@ class Effect(CallerMixin):
         self._upstream_refs.add(getter)
 
     def update(self):
-        if not self.is_pedding:
-            return
         try:
             self._exec_cleanups()
             self._executor.mark_running_caller(self)
@@ -129,6 +128,9 @@ class Effect(CallerMixin):
 
     def add_cleanup(self, fn: Callable[[], None]):
         self._cleanups.append(fn)
+
+    def __call__(self) -> Any:
+        return self.update()
 
     def __repr__(self) -> str:
         return f"Effect(id ={self.id}, name={self.__debug_name})"

@@ -68,7 +68,8 @@ class ExecutionScheduler:
 
     def _run_effect_updates(self):
         for effect in self.__effect_updates:
-            effect.update()
+            if effect.is_pedding:
+                effect.update()
 
         self.__effect_updates.clear()
 
