@@ -41,7 +41,6 @@ class Computed(Generic[T], CallerMixin, GetterMixin):
         self.__debug_name = debug_name
         self._debug_trigger = debug_trigger
         self._state = ComputedState.INIT
-        self._callers: Set[CallerMixin] = set()
         self._pending_deps: Set[GetterMixin] = set()
 
     @property
@@ -60,18 +59,15 @@ class Computed(Generic[T], CallerMixin, GetterMixin):
     def is_need_update(self) -> bool:
         return False
 
-    def remove_caller(self, caller: CallerMixin):
-        self._callers.remove(caller)
-
-    def get_callers(self) -> Iterable[CallerMixin]:
-        return tuple(self._callers)
-
-    @property
-    def value(self):
+    def track(self):
         running_caller = self._executor.get_running_caller()
 
         if running_caller:
             self.__collecting_dependencies(running_caller)
+
+    @property
+    def value(self):
+        self.track()
 
         if self._state == ComputedState.INIT or self._state == ComputedState.PENDING:
             self.update()
@@ -98,7 +94,7 @@ class Computed(Generic[T], CallerMixin, GetterMixin):
                 if scheduler.is_running:
                     scheduler.mark_change_point(self)
 
-                for caller in self._callers:
+                for caller in self.callers:
                     caller.update_pending(self)
 
             self._value = result
@@ -130,11 +126,11 @@ class Computed(Generic[T], CallerMixin, GetterMixin):
 
         if pre_is_pending ^ cur_is_pending:
             # pending state changed,nodify getters
-            for caller in self._callers:
+            for caller in self.callers:
                 caller.update_pending(self, cur_is_pending)
 
     def __collecting_dependencies(self, running_effect: CallerMixin):
-        self._callers.add(running_effect)
+        self.mark_caller(running_effect)
         running_effect.add_upstream_ref(self)
 
     def _cleanup_deps(self):

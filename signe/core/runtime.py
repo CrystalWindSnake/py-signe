@@ -80,14 +80,14 @@ class ExecutionScheduler:
         self.__effect_updates.clear()
 
     def __get_pending_effects(self, getter: GetterMixin) -> Iterable[CallerMixin]:
-        stack: List[CallerMixin] = list(getter.get_callers())
+        stack: List[CallerMixin] = list(getter.callers)
         result: List[CallerMixin] = []
 
         while len(stack):
             current = stack.pop()
 
             if isinstance(current, GetterMixin):
-                stack.extend(current.get_callers())
+                stack.extend(current.callers)
 
             elif current.is_effect and current.is_pedding:
                 result.append(current)

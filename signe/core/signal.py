@@ -48,38 +48,35 @@ class Signal(Generic[T], GetterMixin):
         option: Optional[SignalOption[T]] = None,
         debug_name: Optional[str] = None,
     ) -> None:
+        super().__init__()
         self.__id = Signal._id_gen.new()
-        self._executor = executor
         self._value = value
+        self._executor = executor
         self.option = option or SignalOption[T]()
         self.__debug_name = debug_name
-        self._callers: Set[CallerMixin] = set()
         self._option_comp = cast(Callable[[T, T], bool], self.option.comp)
 
     @property
     def id(self):
         return self.__id
 
+    def track(self):
+        running_caller = self._executor.get_running_caller()
+
+        if running_caller:
+            self.__collecting_dependencies(running_caller)
+
     @property
     def value(self):
-        return self.__getValue()
+        self.track()
+        return self._value
 
     @value.setter
     def value(self, new: T):
         self.__setValue(new)
 
-    def remove_caller(self, caller: CallerMixin):
-        self._callers.remove(caller)
-
-    def __getValue(self) -> T:
-        running_caller = self._executor.get_running_caller()
-
-        if running_caller:
-            self.__collecting_dependencies(running_caller)
-        return self._value  # type: ignore
-
     def __collecting_dependencies(self, running_effect: CallerMixin):
-        self._callers.add(running_effect)
+        self.mark_caller(running_effect)
         running_effect.add_upstream_ref(self)
 
     def __setValue(self, value: Union[T, Callable[[T], T]]):
@@ -99,14 +96,8 @@ class Signal(Generic[T], GetterMixin):
         if not scheduler.is_running:
             scheduler.run()
 
-    def remove_getter(self, caller: CallerMixin):
-        return self._callers.remove(caller)
-
-    def get_callers(self) -> Iterable[CallerMixin]:
-        return tuple(self._callers)
-
     def _update_caller_state(self):
-        for caller in self._callers:
+        for caller in self.callers:
             caller.update_pending(self)
 
     def __hash__(self) -> int:

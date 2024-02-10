@@ -1,14 +1,24 @@
 from __future__ import annotations
 from abc import abstractmethod
-from typing import Callable, Literal, Iterable
+from typing import Callable, List, Literal, Iterable, Set
 
 
 class GetterMixin:
+    def __init__(self) -> None:
+        self.__callers: Set[CallerMixin] = set()
+
+    def mark_caller(self, caller: CallerMixin):
+        self.__callers.add(caller)
+
     def remove_caller(self, caller: CallerMixin):
+        self.__callers.remove(caller)
+
+    def track(self):
         ...
 
-    def get_callers(self) -> Iterable[CallerMixin]:
-        ...
+    @property
+    def callers(self):
+        return tuple(self.__callers)
 
     @property
     def value(self):
