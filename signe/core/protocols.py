@@ -1,6 +1,5 @@
 from __future__ import annotations
-from abc import abstractmethod
-from typing import Callable, Iterable, Protocol, Generic, TypeVar, Set, TYPE_CHECKING
+from typing import Callable, Iterable, Protocol, TypeVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from .effect import Effect

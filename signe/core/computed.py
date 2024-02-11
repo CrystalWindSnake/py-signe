@@ -10,7 +10,6 @@ from typing import (
 from signe.core.mixins import Tracker
 from signe.core.protocols import CallerProtocol, GetterProtocol, IScope
 
-# from .consts import ComputedState
 from .effect import Effect
 
 if TYPE_CHECKING:

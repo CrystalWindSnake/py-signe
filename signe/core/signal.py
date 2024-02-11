@@ -1,11 +1,9 @@
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
-    Iterable,
     TypeVar,
     Generic,
     Callable,
-    Set,
     Union,
     Optional,
     cast,
@@ -13,7 +11,7 @@ from typing import (
 from signe.core.idGenerator import IdGen
 from signe.core.protocols import CallerProtocol
 
-from signe.core.mixins import GetterMixin, CallerMixin, Tracker
+from signe.core.mixins import Tracker
 
 
 if TYPE_CHECKING:
@@ -54,12 +52,10 @@ class Signal(Generic[T]):
 
         self.tracker = Tracker(self, executor, value)
 
-        # self._value = value
         self._executor = executor
         self.option = option or SignalOption[T]()
         self.__debug_name = debug_name
         self._option_comp = cast(Callable[[T, T], bool], self.option.comp)
-        # self._callers: Set[CallerProtocol] = set()
 
     @property
     def id(self):

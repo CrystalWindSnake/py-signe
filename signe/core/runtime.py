@@ -1,8 +1,5 @@
 from __future__ import annotations
 from typing import Iterable, List, Dict, TYPE_CHECKING, cast
-
-
-# from signe.core.mixins import CallerMixin, GetterMixin
 from .collections import Stack
 from .protocols import CallerProtocol, GetterProtocol
 from signe.core.effect import Effect
