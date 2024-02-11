@@ -77,8 +77,8 @@ class Signal(Generic[T]):
         return self.tracker.get_value_with_track()
 
     @value.setter
-    def value(self, new: T):
-        self.__setValue(new)
+    def value(self, value: T):
+        self.__setValue(value)
 
     def mark_caller(self, caller: CallerProtocol):
         self.tracker.mark_caller(caller)
