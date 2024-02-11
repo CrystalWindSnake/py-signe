@@ -14,6 +14,25 @@ class Test_effect_basic:
         effect(fn_spy)
         assert fn_spy.calledTimes == 1
 
+    def test_no_exec_has_not_changed(self):
+        count, set_count = createSignal(0)
+
+        @computed
+        def is_even():
+            return count() % 2 == 0
+
+        @utils.fn
+        def fn_spy():
+            is_even()
+
+        effect(fn_spy)
+
+        # not run
+        assert fn_spy.calledTimes == 1
+
+        set_count(2)
+        assert fn_spy.calledTimes == 1
+
     def test_observe_basic_prop(self):
         dummy = None
         obj = createReactive({"num": 0})

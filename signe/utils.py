@@ -324,6 +324,7 @@ def _getter_calls(fns: Sequence[TGetter[T]]):
 def on(
     getter: Union[Getter[T], Sequence[Getter[T]]],
     fn: Callable[..., None],
+    *,
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
 ) -> Effect:
@@ -334,6 +335,7 @@ def on(
 def on(
     getter: Union[Getter[T], Sequence[Getter[T]]],
     fn: Optional[Callable[..., None]] = None,
+    *,
     onchanges=False,
 ) -> Callable[[Callable], Effect]:
     ...
@@ -342,6 +344,7 @@ def on(
 def on(
     getter: Union[Getter, Sequence[Getter]],
     fn: Optional[Callable[..., None]] = None,
+    *,
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
 ):

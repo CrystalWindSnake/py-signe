@@ -45,3 +45,6 @@ class CallerProtocol(Protocol[_T]):
         self, getter: GetterProtocol, is_change_point: bool = True, is_set_pending=True
     ):
         ...
+
+    def add_cleanup(self, fn: Callable[[], None]):
+        ...
