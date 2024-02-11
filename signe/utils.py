@@ -18,6 +18,7 @@ from typing import (
     Optional,
     cast,
     Generic,
+    Protocol,
 )
 
 
@@ -86,8 +87,14 @@ def scope():
     _GLOBAL_SCOPE_MANAGER.dispose_scope()
 
 
+class GetterProtocol(Protocol[T]):
+    @property
+    def value(self) -> T:
+        ...
+
+
 class Getter(Generic[T]):
-    def __init__(self, signal: Signal[T]) -> None:
+    def __init__(self, signal: GetterProtocol[T]) -> None:
         self._signal = signal
 
     def __call__(self):
@@ -109,8 +116,8 @@ def createSignal(
 ):
     s = Signal(get_current_executor(), value, SignalOption(comp), debug_name)
 
-    getter = Getter(s)
-    setter = Setter(s)
+    getter = Getter[T](s)
+    setter = Setter[T](s)
 
     return cast(Tuple[Callable[[], T], Callable[[T], None]], (getter, setter))
 
@@ -215,9 +222,7 @@ def computed(
 
     if fn:
         cp = Computed(get_current_executor(), fn, **kws)
-
-        def getter():
-            return cp.value
+        getter = Getter(cp)
 
         return getter
     else:
@@ -317,7 +322,7 @@ def _getter_calls(fns: Sequence[TGetter[T]]):
 
 @overload
 def on(
-    getter: Union[TGetter[T], Sequence[TGetter[T]]],
+    getter: Union[Getter[T], Sequence[Getter[T]]],
     fn: Callable[..., None],
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
@@ -327,7 +332,7 @@ def on(
 
 @overload
 def on(
-    getter: Union[TGetter[T], Sequence[TGetter[T]]],
+    getter: Union[Getter[T], Sequence[Getter[T]]],
     fn: Optional[Callable[..., None]] = None,
     onchanges=False,
 ) -> Callable[[Callable], Effect]:
@@ -335,7 +340,7 @@ def on(
 
 
 def on(
-    getter: Union[TGetter[T], Sequence[TGetter[T]]],
+    getter: Union[Getter, Sequence[Getter]],
     fn: Optional[Callable[..., None]] = None,
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
@@ -343,12 +348,25 @@ def on(
     call_kws = {"onchanges": onchanges, "effect_kws": effect_kws}
 
     if fn is None:
-        return cast(
-            Callable[[Callable], Effect],
-            _on(getter, **call_kws),
-        )
 
-    return Effect(getter, **call_kws)(fn)
+        def wrap_cp(fn: Callable[[], T]):
+            return on(getter, fn, **call_kws)
+
+        return wrap_cp
+
+    getters: List[Getter] = []
+    if not isinstance(getter, Sequence):
+        getters = [getter]
+
+    targets = [g._signal for g in getters]
+
+    return Effect(
+        executor=get_current_executor(),
+        fn=fn,
+        immediate=not onchanges,
+        on=targets,  # type: ignore
+        # **effect_kws,
+    )
 
 
 import inspect

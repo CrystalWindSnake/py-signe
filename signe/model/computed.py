@@ -1,19 +1,18 @@
 from signe.core import Computed
 from signe.core.scope import IScope
 from signe.utils import get_current_executor
-from typing import (
-    TypeVar,
-    Callable,
-    Union,
-    overload,
-    Optional,
-)
-
+from typing import TypeVar, Callable, Union, cast, overload, Optional, Protocol
 
 T = TypeVar("T")
 
 
-_T_computed = Callable[[], T]
+class ComputedProtocol(Protocol[T]):
+    @property
+    def value(self) -> T:
+        ...
+
+
+_T_computed = ComputedProtocol[T]
 _T_computed_setter = Callable[[Callable[[], T]], _T_computed]
 
 
@@ -57,11 +56,7 @@ def computed(
 
     if fn:
         cp = Computed(get_current_executor(), fn, **kws)
-
-        def getter():
-            return cp.value
-
-        return getter
+        return cast(ComputedProtocol[T], cp)
     else:
 
         def wrap_cp(fn: Callable[[], T]):
