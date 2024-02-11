@@ -87,6 +87,11 @@ def scope():
     _GLOBAL_SCOPE_MANAGER.dispose_scope()
 
 
+class CallableProtocol(Protocol):
+    def __call__(self) -> Any:
+        ...
+
+
 class GetterProtocol(Protocol[T]):
     @property
     def value(self) -> T:
@@ -322,27 +327,27 @@ def _getter_calls(fns: Sequence[TGetter[T]]):
 
 @overload
 def on(
-    getter: Union[Getter[T], Sequence[Getter[T]]],
-    fn: Callable[..., None],
+    getter: CallableProtocol,
+    fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
-) -> Effect:
+):
     ...
 
 
 @overload
 def on(
-    getter: Union[Getter[T], Sequence[Getter[T]]],
+    getter: Sequence[CallableProtocol],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
-) -> Callable[[Callable], Effect]:
+):
     ...
 
 
 def on(
-    getter: Union[Getter, Sequence[Getter]],
+    getter: Union[CallableProtocol, Sequence[CallableProtocol]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
