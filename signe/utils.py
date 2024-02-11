@@ -1,10 +1,13 @@
-from signe.core.runtime import Executor, BatchExecutionScheduler, ExecutionScheduler
+from signe.core.runtime import Executor, BatchExecutionScheduler
 from signe.core.signal import Signal, SignalOption, TSignalOptionInitComp
 from signe.core.effect import Effect
 from signe.core.computed import Computed
 from signe.core.scope import Scope, IScope
 from contextlib import contextmanager
 from functools import lru_cache
+import inspect
+from dataclasses import dataclass
+
 from typing import (
     Any,
     Dict,
@@ -358,27 +361,47 @@ def on(
     if fn is None:
 
         def wrap_cp(fn: Callable[[], T]):
-            return on(getter, fn, **call_kws)
+            return on(getter, fn, **call_kws)  # type: ignore
 
         return wrap_cp
 
     getters: List[Getter] = []
-    if not isinstance(getter, Sequence):
-        getters = [getter]
+    if isinstance(getter, Sequence):
+        getters = getter  # type: ignore
+    else:
+        getters = [getter]  # type: ignore
 
     targets = [g._signal for g in getters]
 
+    def getter_calls():
+        return _getter_calls(getters)  # type: ignore
+
+    args_count = _get_func_args_count(fn)
+    prev_values = getter_calls()
+
+    def real_fn():
+        nonlocal prev_values
+
+        current_values = getter_calls()  # type: ignore
+
+        states = (
+            WatchedState(cur, prev)
+            for cur, prev in zip(current_values, prev_values or current_values)
+        )
+
+        prev_values = current_values
+        if args_count == 0:
+            fn()
+        else:
+            fn(*states)
+
     return Effect(
         executor=get_current_executor(),
-        fn=fn,
+        fn=real_fn,
         immediate=not onchanges,
         on=targets,  # type: ignore
         # **effect_kws,
     )
-
-
-import inspect
-from dataclasses import dataclass
 
 
 @dataclass(frozen=True)
@@ -389,49 +412,6 @@ class WatchedState:
 
 def _get_func_args_count(fn):
     return len(inspect.getfullargspec(fn).args)
-
-
-# immediate
-def _on(
-    getter: Union[TGetter[T], Sequence[TGetter[T]]],
-    onchanges=False,
-    effect_kws: Optional[Dict[str, Any]] = None,
-):
-    getters = getter
-    if not isinstance(getter, Sequence):
-        getters = [getter]
-
-    def getter_calls():
-        return _getter_calls(getters)  # type: ignore
-
-    def warp(fn: Callable[..., None]):
-        args_count = _get_func_args_count(fn)
-        prev_values = None
-
-        def _on():
-            nonlocal onchanges, prev_values
-            current_values = getter_calls()  # type: ignore
-
-            states = (
-                WatchedState(cur, prev)
-                for cur, prev in zip(current_values, prev_values or current_values)
-            )
-
-            prev_values = current_values
-
-            if onchanges:
-                onchanges = False
-                return
-
-            with pause_capture():
-                if args_count == 0:
-                    fn()
-                else:
-                    fn(*states)
-
-        return effect(_on, **effect_kws or {})
-
-    return warp
 
 
 class pause_capture:
