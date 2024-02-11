@@ -1,5 +1,6 @@
 from signe.core import Computed
 from signe.core.scope import IScope
+from signe.model.protocols import GetterProtocol
 from signe.utils import get_current_executor, _GLOBAL_SCOPE_MANAGER
 
 
@@ -8,13 +9,7 @@ from typing import TypeVar, Callable, Union, cast, overload, Optional, Protocol
 T = TypeVar("T")
 
 
-class ComputedProtocol(Protocol[T]):
-    @property
-    def value(self) -> T:
-        ...
-
-
-_T_computed = ComputedProtocol[T]
+_T_computed = GetterProtocol[T]
 _T_computed_setter = Callable[[Callable[[], T]], _T_computed]
 
 
@@ -59,7 +54,7 @@ def computed(
     if fn:
         scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
         cp = Computed(get_current_executor(), fn, **kws, scope=scope)
-        return cast(ComputedProtocol[T], cp)
+        return cast(GetterProtocol[T], cp)
     else:
 
         def wrap_cp(fn: Callable[[], T]):

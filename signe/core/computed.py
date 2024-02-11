@@ -63,13 +63,22 @@ class Computed(Effect[_T]):
     def _update_value(self, mark_change_point=True):
         new_value = self.update()
 
-        if self.tracker.get_value_without_track() != new_value and mark_change_point:
+        if (
+            self.__not_eq_value(self.tracker.get_value_without_track(), new_value)
+            and mark_change_point
+        ):
             scheduler = self._executor.get_current_scheduler()
             scheduler.mark_computed_change_point(self)
 
             self._update_caller_state()
 
         self.tracker.update_value(new_value)
+
+    def __not_eq_value(self, a, b):
+        try:
+            return bool(a != b)
+        except ValueError:
+            return True
 
     def _update_caller_state(self):
         for caller in self.tracker.callers:

@@ -1,19 +1,10 @@
 from signe.core import Signal
 from signe.core.signal import SignalOption, TSignalOptionInitComp
+from signe.model.protocols import SignalProtocol
 from signe.utils import get_current_executor
 from typing import TypeVar, Optional, Protocol, cast
 
 T = TypeVar("T")
-
-
-class SignalProtocol(Protocol[T]):
-    @property
-    def value(self) -> T:
-        ...
-
-    @value.setter
-    def value(self, value: T):
-        ...
 
 
 def signal(
