@@ -1,13 +1,20 @@
 from __future__ import annotations
 from typing import Iterable, List, Dict, TYPE_CHECKING, cast
 
-from signe.core.mixins import CallerMixin, GetterMixin
+
+# from signe.core.mixins import CallerMixin, GetterMixin
 from .collections import Stack
+from .protocols import CallerProtocol, GetterProtocol
+from signe.core.effect import Effect
+
+if TYPE_CHECKING:
+    from signe.core.signal import Signal
+    from signe.core.computed import Computed
 
 
 class Executor:
     def __init__(self) -> None:
-        self._caller_running_stack = Stack[CallerMixin]()
+        self._caller_running_stack = Stack[CallerProtocol]()
         self.execution_scheduler_stack = Stack[ExecutionScheduler]()
         self.__defalut_executionScheduler = ExecutionScheduler()
 
@@ -20,10 +27,10 @@ class Executor:
             or self.__defalut_executionScheduler
         )
 
-    def mark_running_caller(self, caller: CallerMixin):
+    def mark_running_caller(self, caller: CallerProtocol):
         self._caller_running_stack.set_current(caller)
 
-    def reset_running_caller(self, caller: CallerMixin):
+    def reset_running_caller(self, caller: CallerProtocol):
         self._caller_running_stack.reset_current()
 
     def get_running_caller(self):
@@ -32,24 +39,33 @@ class Executor:
 
 class ExecutionScheduler:
     def __init__(self) -> None:
-        self._getter_change_points: Dict[GetterMixin, None] = {}
-        self.__effect_updates: Dict[CallerMixin, None] = {}
+        self._signal_change_points: Dict[Signal, None] = {}
+        self._computed_change_points: Dict[Computed, None] = {}
+        self._effect_updates: Dict[Effect, None] = {}
         self.__running = False
 
     @property
     def is_running(self):
         return self.__running
 
-    def mark_change_point(self, getter: GetterMixin):
-        self._getter_change_points[getter] = None
+    def mark_signal_change_point(self, signal: Signal):
+        self._signal_change_points[signal] = None
+
+    def mark_computed_change_point(self, computed: Computed):
+        self._computed_change_points[computed] = None
 
     def run(self):
         count = 0
         self.__running = True
 
         try:
-            while len(self._getter_change_points) > 0 or len(self.__effect_updates) > 0:
-                self._run_getter_updates()
+            while (
+                self._signal_change_points
+                or self._computed_change_points
+                or self._effect_updates
+            ):
+                self._run_signal_updates()
+                self._run_computed_updates()
                 self._run_effect_updates()
 
                 count += 1
@@ -58,39 +74,46 @@ class ExecutionScheduler:
         finally:
             self.__running = False
 
-    def _run_getter_updates(self):
-        for getter in self._getter_change_points:
-            effects = self.__get_pending_effects(getter)
+    def _run_signal_updates(self):
+        for getter in self._signal_change_points:
+            effects = self.__get_pending_or_update_effects(getter)
             for effect in effects:
-                self.__effect_updates[effect] = None
+                self._effect_updates[effect] = None
 
-        self._getter_change_points.clear()
+        self._signal_change_points.clear()
+
+    def _run_computed_updates(self):
+        for getter in self._computed_change_points:
+            effects = self.__get_pending_or_update_effects(getter)
+            for effect in effects:
+                self._effect_updates[effect] = None
+
+        self._computed_change_points.clear()
 
     def _run_effect_updates(self):
-        for effect in self.__effect_updates:
-            if effect.is_pedding:
+        for effect in self._effect_updates:
+            if effect.state == "NEED_UPDATE":
                 effect.update()
+            else:
+                # Let the upstream node determine the state
+                effect.made_upstream_confirm_state()
 
-            # if effect.is_need_update:
-            #     effect.update()
-            # else:
-            #     # Let the upstream node determine the state
-            #     effect.made_upstream_confirm_state()
+        self._effect_updates.clear()
 
-        self.__effect_updates.clear()
-
-    def __get_pending_effects(self, getter: GetterMixin) -> Iterable[CallerMixin]:
-        stack: List[CallerMixin] = list(getter.callers)
-        result: List[CallerMixin] = []
+    def __get_pending_or_update_effects(
+        self, getter: GetterProtocol
+    ) -> Iterable[Effect]:
+        stack: List[CallerProtocol] = list(getter.callers)
+        result: List[Effect] = []
 
         while len(stack):
             current = stack.pop()
 
-            if isinstance(current, GetterMixin):
-                stack.extend(current.callers)
+            if not current.is_effect:
+                stack.extend(cast(GetterProtocol, current).callers)
 
-            elif current.is_effect and current.is_pedding:
-                result.append(current)
+            else:
+                result.append(cast(Effect, current))
 
         return result
 

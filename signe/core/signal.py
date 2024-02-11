@@ -11,8 +11,9 @@ from typing import (
     cast,
 )
 from signe.core.idGenerator import IdGen
+from signe.core.protocols import CallerProtocol
 
-from signe.core.mixins import GetterMixin, CallerMixin
+from signe.core.mixins import GetterMixin, CallerMixin, Tracker
 
 
 if TYPE_CHECKING:
@@ -38,7 +39,7 @@ class SignalOption(Generic[T]):
         self.comp: TSignalOptionComp = comp  # type: ignore
 
 
-class Signal(Generic[T], GetterMixin):
+class Signal(Generic[T]):
     _id_gen = IdGen("Signal")
 
     def __init__(
@@ -50,46 +51,57 @@ class Signal(Generic[T], GetterMixin):
     ) -> None:
         super().__init__()
         self.__id = Signal._id_gen.new()
-        self._value = value
+
+        self.tracker = Tracker(self, executor, value)
+
+        # self._value = value
         self._executor = executor
         self.option = option or SignalOption[T]()
         self.__debug_name = debug_name
         self._option_comp = cast(Callable[[T, T], bool], self.option.comp)
+        # self._callers: Set[CallerProtocol] = set()
 
     @property
     def id(self):
         return self.__id
 
     def track(self):
-        running_caller = self._executor.get_running_caller()
+        self.tracker.track()
 
-        if running_caller and running_caller.auto_collecting_dep:
-            self.__collecting_dependencies(running_caller)
+    @property
+    def callers(self):
+        return self.tracker.callers
+
+    @property
+    def is_signal(self) -> bool:
+        return True
 
     @property
     def value(self):
-        self.track()
-        return self._value
+        return self.tracker.get_value_with_track()
 
     @value.setter
     def value(self, new: T):
         self.__setValue(new)
 
-    def __collecting_dependencies(self, running_effect: CallerMixin):
-        self.mark_caller(running_effect)
-        running_effect.add_upstream_ref(self)
+    def mark_caller(self, caller: CallerProtocol):
+        self.tracker.mark_caller(caller)
+
+    def remove_caller(self, caller: CallerProtocol):
+        self.tracker.remove_caller(caller)
 
     def __setValue(self, value: Union[T, Callable[[T], T]]):
+        org_value = self.tracker.get_value_without_track()
         if isinstance(value, Callable):
-            value = value(self._value)  # type: ignore
+            value = value(org_value)  # type: ignore
 
-        if self._option_comp(self._value, value):  # type: ignore
+        if self._option_comp(org_value, value):  # type: ignore
             return
 
-        self._value = value
+        self.tracker.update_value(cast(T, value))
 
         scheduler = self._executor.get_current_scheduler()
-        scheduler.mark_change_point(self)
+        scheduler.mark_signal_change_point(self)
 
         self._update_caller_state()
 
@@ -97,8 +109,8 @@ class Signal(Generic[T], GetterMixin):
             scheduler.run()
 
     def _update_caller_state(self):
-        for caller in self.callers:
-            caller.update_pending(self)
+        for caller in self.tracker.callers:
+            caller.update_pending(self, is_change_point=True)
 
     def __hash__(self) -> int:
         return hash(self.id)

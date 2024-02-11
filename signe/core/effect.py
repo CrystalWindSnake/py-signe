@@ -6,15 +6,21 @@ from typing import (
     Set,
     Callable,
     Optional,
+    TypeVar,
     cast,
+    Generic,
 )
 
 from signe.core.idGenerator import IdGen
-from signe.core.mixins import GetterMixin, CallerMixin
+
+# from signe.core.mixins import GetterMixin, CallerMixin
+from signe.core.protocols import GetterProtocol
 from .consts import EffectState
 
 if TYPE_CHECKING:
     from .runtime import Executor
+
+_T = TypeVar("_T")
 
 
 class EffectOption:
@@ -22,15 +28,15 @@ class EffectOption:
         self.level = level
 
 
-class Effect(CallerMixin):
+class Effect(Generic[_T]):
     _id_gen = IdGen("Effect")
 
     def __init__(
         self,
         executor: Executor,
-        fn: Callable[[], None],
+        fn: Callable[[], _T],
         immediate=True,
-        on: Optional[List[GetterMixin]] = None,
+        on: Optional[List[GetterProtocol]] = None,
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
@@ -39,14 +45,14 @@ class Effect(CallerMixin):
         self.__id = self._id_gen.new()
         self._executor = executor
         self.fn = fn
-        self._upstream_refs: Set[GetterMixin] = set()
+        self._upstream_refs: Set[GetterProtocol] = set()
         self.__debug_name = debug_name
         self._debug_trigger = debug_trigger
 
-        self._auto_collecting_dep = not bool(on)
+        self.auto_collecting_dep = not bool(on)
 
-        self._state = EffectState.PENDING
-        self._pending_deps: Set[GetterMixin] = set()
+        self._state: EffectState = "INIT"
+        self._pending_deps: Set[GetterProtocol] = set()
         self._cleanups: List[Callable[[], None]] = []
         # self.priority_level = priority_level
 
@@ -56,7 +62,7 @@ class Effect(CallerMixin):
         if running_caller and running_caller.is_effect:
             cast(Effect, running_caller).made_sub_effect(self)
 
-        if not self._auto_collecting_dep:
+        if not self.auto_collecting_dep:
             assert on
             for getter in on:
                 getter.mark_caller(self)
@@ -73,40 +79,36 @@ class Effect(CallerMixin):
         return self._state
 
     @property
-    def auto_collecting_dep(self):
-        return self._auto_collecting_dep
-
-    @property
     def is_effect(self) -> bool:
         return True
 
     @property
     def is_pedding(self) -> bool:
-        return self._state == EffectState.PENDING
+        return self._state == "PENDING"
 
     @property
     def is_need_update(self) -> bool:
-        return self._state == EffectState.NEED_UPDATE
+        return self._state == "NEED_UPDATE"
 
     def made_sub_effect(self, sub: Effect):
         self._sub_effects.append(sub)
 
-    def add_upstream_ref(self, getter: GetterMixin):
+    def add_upstream_ref(self, getter: GetterProtocol):
         self._upstream_refs.add(getter)
 
     def made_upstream_confirm_state(self):
         for us in self._upstream_refs:
-            if isinstance(us, CallerMixin) and us.is_pedding:
+            if isinstance(us, Effect):
                 us.confirm_state()
 
     def confirm_state(self):
-        return self.made_upstream_confirm_state()
+        pass
 
-    def update(self):
+    def update(self) -> _T:
         try:
             self._exec_cleanups()
             self._executor.mark_running_caller(self)
-            self._state = EffectState.RUNNING
+            self._state = "RUNNING"
 
             if self.auto_collecting_dep:
                 self._clear_all_deps()
@@ -116,12 +118,19 @@ class Effect(CallerMixin):
             if self._debug_trigger:
                 self._debug_trigger()
 
-        finally:
-            self._state = EffectState.STALE
-            self._executor.reset_running_caller(self)
             return result
 
-    def update_pending(self, getter: GetterMixin, is_set_pending=True):
+        finally:
+            self._state = "STALE"
+            self._executor.reset_running_caller(self)
+
+    def update_pending(
+        self, getter: GetterProtocol, is_change_point: bool = True, is_set_pending=True
+    ):
+        if is_change_point:
+            self._state = "NEED_UPDATE"
+            return
+
         if is_set_pending:
             self._pending_deps.add(getter)
         else:
@@ -130,7 +139,7 @@ class Effect(CallerMixin):
         cur_is_pending = len(self._pending_deps) > 0
 
         if cur_is_pending:
-            self._state = EffectState.PENDING
+            self._state = "PENDING"
 
     def _clear_all_deps(self):
         for getter in self._upstream_refs:
