@@ -24,8 +24,6 @@ from typing import (
     Protocol,
 )
 
-from weakref import ref as weakref
-
 
 T = TypeVar("T")
 
