@@ -52,6 +52,10 @@ class Computed(Generic[T], CallerMixin, GetterMixin):
         return False
 
     @property
+    def auto_collecting_dep(self):
+        return True
+
+    @property
     def is_pedding(self) -> bool:
         return self._state == ComputedState.PENDING
 

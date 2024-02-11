@@ -38,6 +38,10 @@ class CallerMixin:
     def is_need_update(self) -> bool:
         ...
 
+    @property
+    def auto_collecting_dep(self) -> bool:
+        ...
+
     def update(self):
         ...
 

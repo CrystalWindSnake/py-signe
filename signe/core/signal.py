@@ -63,7 +63,7 @@ class Signal(Generic[T], GetterMixin):
     def track(self):
         running_caller = self._executor.get_running_caller()
 
-        if running_caller:
+        if running_caller and running_caller.auto_collecting_dep:
             self.__collecting_dependencies(running_caller)
 
     @property

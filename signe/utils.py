@@ -17,6 +17,7 @@ from typing import (
     overload,
     Optional,
     cast,
+    Generic,
 )
 
 
@@ -85,6 +86,22 @@ def scope():
     _GLOBAL_SCOPE_MANAGER.dispose_scope()
 
 
+class Getter(Generic[T]):
+    def __init__(self, signal: Signal[T]) -> None:
+        self._signal = signal
+
+    def __call__(self):
+        return self._signal.value
+
+
+class Setter(Generic[T]):
+    def __init__(self, signal: Signal[T]) -> None:
+        self._signal = signal
+
+    def __call__(self, value: T):
+        self._signal.value = value
+
+
 def createSignal(
     value: T,
     comp: TSignalOptionInitComp[T] = None,
@@ -92,13 +109,10 @@ def createSignal(
 ):
     s = Signal(get_current_executor(), value, SignalOption(comp), debug_name)
 
-    def getValue():
-        return s.value
+    getter = Getter(s)
+    setter = Setter(s)
 
-    def setValue(new: T):
-        s.value = new
-
-    return cast(Tuple[Callable[[], T], Callable[[T], None]], (getValue, setValue))
+    return cast(Tuple[Callable[[], T], Callable[[T], None]], (getter, setter))
 
 
 _TEffect_Fn = Callable[[Callable[..., T]], Effect]
@@ -334,7 +348,7 @@ def on(
             _on(getter, **call_kws),
         )
 
-    return _on(getter, **call_kws)(fn)
+    return Effect(getter, **call_kws)(fn)
 
 
 import inspect

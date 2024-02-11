@@ -29,6 +29,8 @@ class Effect(CallerMixin):
         self,
         executor: Executor,
         fn: Callable[[], None],
+        immediate=True,
+        on: Optional[List[GetterMixin]] = None,
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
@@ -40,6 +42,9 @@ class Effect(CallerMixin):
         self._upstream_refs: Set[GetterMixin] = set()
         self.__debug_name = debug_name
         self._debug_trigger = debug_trigger
+
+        self._auto_collecting_dep = not bool(on)
+
         self._state = EffectState.PENDING
         self._pending_deps: Set[GetterMixin] = set()
         self._cleanups: List[Callable[[], None]] = []
@@ -51,7 +56,13 @@ class Effect(CallerMixin):
         if running_caller and running_caller.is_effect:
             cast(Effect, running_caller).made_sub_effect(self)
 
-        self.update()
+        if not self._auto_collecting_dep:
+            assert on
+            for getter in on:
+                getter.mark_caller(self)
+
+        if immediate:
+            self.update()
 
     @property
     def id(self):
@@ -60,6 +71,10 @@ class Effect(CallerMixin):
     @property
     def state(self):
         return self._state
+
+    @property
+    def auto_collecting_dep(self):
+        return self._auto_collecting_dep
 
     @property
     def is_effect(self) -> bool:
@@ -93,15 +108,18 @@ class Effect(CallerMixin):
             self._executor.mark_running_caller(self)
             self._state = EffectState.RUNNING
 
-            self._clear_all_deps()
+            if self.auto_collecting_dep:
+                self._clear_all_deps()
+
             self._dispose_sub_effects()
-            self.fn()
+            result = self.fn()
             if self._debug_trigger:
                 self._debug_trigger()
 
         finally:
             self._state = EffectState.STALE
             self._executor.reset_running_caller(self)
+            return result
 
     def update_pending(self, getter: GetterMixin, is_set_pending=True):
         if is_set_pending:
