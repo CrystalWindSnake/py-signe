@@ -8,7 +8,7 @@ from typing import (
 )
 
 from signe.core.mixins import Tracker
-from signe.core.protocols import CallerProtocol, GetterProtocol
+from signe.core.protocols import CallerProtocol, GetterProtocol, IScope
 
 # from .consts import ComputedState
 from .effect import Effect
@@ -28,6 +28,7 @@ class Computed(Effect[_T]):
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
+        scope: Optional[IScope] = None,
     ) -> None:
         super().__init__(
             executor,
@@ -37,6 +38,7 @@ class Computed(Effect[_T]):
             debug_trigger,
             priority_level,
             debug_name,
+            scope=scope,
         )
         self.tracker = cast(Tracker[_T], Tracker(self, executor, None))
 
@@ -55,14 +57,14 @@ class Computed(Effect[_T]):
     @property
     def value(self):
         if self.state == "INIT" or self.state == "PENDING":
-            self._update_value()
+            self._update_value(mark_change_point=self.state == "PENDING")
 
         return self.tracker.get_value_with_track()
 
-    def _update_value(self):
+    def _update_value(self, mark_change_point=True):
         new_value = self.update()
 
-        if self.tracker.get_value_without_track() != new_value:
+        if self.tracker.get_value_without_track() != new_value and mark_change_point:
             scheduler = self._executor.get_current_scheduler()
             scheduler.mark_computed_change_point(self)
 
@@ -109,4 +111,4 @@ class Computed(Effect[_T]):
                 caller.update_pending(self, False, cur_is_pending)
 
     def __repr__(self) -> str:
-        return f"Computed(id ={self.id}, name={self.__debug_name})"
+        return f"Computed(id ={self.id}, name={self._debug_name})"

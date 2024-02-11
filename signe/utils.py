@@ -24,6 +24,8 @@ from typing import (
     Protocol,
 )
 
+from weakref import ref as weakref
+
 
 T = TypeVar("T")
 
@@ -85,13 +87,18 @@ def get_current_executor():
 
 @contextmanager
 def scope():
-    _GLOBAL_SCOPE_MANAGER.new_scope()
-    yield
+    scope = _GLOBAL_SCOPE_MANAGER.new_scope()
+    yield scope
     _GLOBAL_SCOPE_MANAGER.dispose_scope()
 
 
-class CallableProtocol(Protocol):
-    def __call__(self) -> Any:
+class CallableProtocol(Protocol[T]):
+    def __call__(self) -> T:
+        ...
+
+
+class SetterProtocol(Protocol[T]):
+    def __call__(self, value: T):
         ...
 
 
@@ -102,19 +109,19 @@ class GetterProtocol(Protocol[T]):
 
 
 class Getter(Generic[T]):
-    def __init__(self, signal: GetterProtocol[T]) -> None:
-        self._signal = signal
+    def __init__(self, getter: GetterProtocol[T]) -> None:
+        self._getter = getter
 
     def __call__(self):
-        return self._signal.value
+        return self._getter.value
 
 
 class Setter(Generic[T]):
-    def __init__(self, signal: Signal[T]) -> None:
-        self._signal = signal
+    def __init__(self, getter: Signal[T]) -> None:
+        self._getter = getter
 
     def __call__(self, value: T):
-        self._signal.value = value
+        self._getter.value = value
 
 
 def createSignal(
@@ -172,11 +179,9 @@ def effect(
     }
 
     if fn:
-        res = Effect(get_current_executor(), fn, **kws)
-        if scope:
-            scope.add_effect(res)
-        else:
-            _GLOBAL_SCOPE_MANAGER.mark_effect(res)
+        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
+        res = Effect(get_current_executor(), fn, **kws, scope=scope)
+
         return res
     else:
 
@@ -229,7 +234,8 @@ def computed(
     }
 
     if fn:
-        cp = Computed(get_current_executor(), fn, **kws)
+        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
+        cp = Computed(get_current_executor(), fn, **kws, scope=scope)
         getter = Getter(cp)
 
         return getter
@@ -371,7 +377,7 @@ def on(
     else:
         getters = [getter]  # type: ignore
 
-    targets = [g._signal for g in getters]
+    targets = [g._getter for g in getters]
 
     def getter_calls():
         return _getter_calls(getters)  # type: ignore

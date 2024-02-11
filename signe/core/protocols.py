@@ -48,3 +48,11 @@ class CallerProtocol(Protocol[_T]):
 
     def add_cleanup(self, fn: Callable[[], None]):
         ...
+
+
+class IScope(Protocol):
+    def add_effect(self, effect: Effect):
+        ...
+
+    def dispose(self):
+        ...

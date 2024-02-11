@@ -1,6 +1,8 @@
 from signe.core import Computed
 from signe.core.scope import IScope
-from signe.utils import get_current_executor
+from signe.utils import get_current_executor, _GLOBAL_SCOPE_MANAGER
+
+
 from typing import TypeVar, Callable, Union, cast, overload, Optional, Protocol
 
 T = TypeVar("T")
@@ -55,7 +57,8 @@ def computed(
     }
 
     if fn:
-        cp = Computed(get_current_executor(), fn, **kws)
+        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
+        cp = Computed(get_current_executor(), fn, **kws, scope=scope)
         return cast(ComputedProtocol[T], cp)
     else:
 

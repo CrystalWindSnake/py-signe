@@ -13,8 +13,7 @@ from typing import (
 
 from signe.core.idGenerator import IdGen
 
-# from signe.core.mixins import GetterMixin, CallerMixin
-from signe.core.protocols import GetterProtocol
+from signe.core.protocols import GetterProtocol, IScope
 from .consts import EffectState
 
 if TYPE_CHECKING:
@@ -41,12 +40,13 @@ class Effect(Generic[_T]):
         priority_level=1,
         debug_name: Optional[str] = None,
         capture_parent_effect=True,
+        scope: Optional[IScope] = None,
     ) -> None:
         self.__id = self._id_gen.new()
         self._executor = executor
         self.fn = fn
         self._upstream_refs: Set[GetterProtocol] = set()
-        self.__debug_name = debug_name
+        self._debug_name = debug_name
         self._debug_trigger = debug_trigger
 
         self.auto_collecting_dep = not bool(on)
@@ -55,6 +55,9 @@ class Effect(Generic[_T]):
         self._pending_deps: Set[GetterProtocol] = set()
         self._cleanups: List[Callable[[], None]] = []
         # self.priority_level = priority_level
+
+        if scope:
+            scope.add_effect(self)
 
         self._sub_effects: List[Effect] = []
 
@@ -172,4 +175,4 @@ class Effect(Generic[_T]):
         return self.update()
 
     def __repr__(self) -> str:
-        return f"Effect(id ={self.id}, name={self.__debug_name})"
+        return f"Effect(id ={self.id}, name={self._debug_name})"

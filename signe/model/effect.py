@@ -55,11 +55,8 @@ def effect(
     }
 
     if fn:
-        res = Effect(get_current_executor(), fn, **kws)
-        if scope:
-            scope.add_effect(res)
-        else:
-            _GLOBAL_SCOPE_MANAGER.mark_effect(res)
+        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
+        res = Effect(get_current_executor(), fn, **kws, scope=scope)
         return res
     else:
 

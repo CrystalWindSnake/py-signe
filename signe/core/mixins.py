@@ -3,6 +3,7 @@ from abc import abstractmethod
 from typing import Callable, List, TypeVar, Generic, Set, TYPE_CHECKING
 
 from signe.core.protocols import CallerProtocol, GetterProtocol
+from weakref import ref as weakref
 
 if TYPE_CHECKING:
     from .runtime import Executor
@@ -74,7 +75,7 @@ class CallerMixin:
 
 class Tracker(Generic[_T]):
     def __init__(self, owner: GetterProtocol, executor: Executor, value: _T) -> None:
-        self._owner = owner
+        self._owner = weakref(owner)
         self._callers: Set[CallerProtocol] = set()
         self._value = value
         self._executor = executor
@@ -107,4 +108,7 @@ class Tracker(Generic[_T]):
 
     def __collecting_dependencies(self, running_effect: CallerProtocol):
         self.mark_caller(running_effect)
-        running_effect.add_upstream_ref(self._owner)
+
+        owner = self._owner()
+        if owner:
+            running_effect.add_upstream_ref(owner)
