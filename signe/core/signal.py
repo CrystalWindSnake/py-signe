@@ -12,10 +12,7 @@ from signe.core.idGenerator import IdGen
 from signe.core.protocols import CallerProtocol
 
 from signe.core.mixins import Tracker
-
-
-if TYPE_CHECKING:
-    from .runtime import Executor
+from .context import get_executor
 
 
 T = TypeVar("T")
@@ -42,17 +39,17 @@ class Signal(Generic[T]):
 
     def __init__(
         self,
-        executor: Executor,
         value: T,
         option: Optional[SignalOption[T]] = None,
         debug_name: Optional[str] = None,
     ) -> None:
         super().__init__()
         self.__id = Signal._id_gen.new()
+        self._value = value
 
-        self.tracker = Tracker(self, executor, value)
+        self._executor = get_executor()
+        self.tracker = Tracker(self, self._executor, value)
 
-        self._executor = executor
         self.option = option or SignalOption[T]()
         self.__debug_name = debug_name
         self._option_comp = cast(Callable[[T, T], bool], self.option.comp)

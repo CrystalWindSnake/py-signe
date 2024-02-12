@@ -15,9 +15,8 @@ from signe.core.idGenerator import IdGen
 
 from signe.core.protocols import GetterProtocol, IScope
 from .consts import EffectState
+from .context import get_executor
 
-if TYPE_CHECKING:
-    from .runtime import Executor
 
 _T = TypeVar("_T")
 
@@ -32,7 +31,6 @@ class Effect(Generic[_T]):
 
     def __init__(
         self,
-        executor: Executor,
         fn: Callable[[], _T],
         immediate=True,
         on: Optional[List[GetterProtocol]] = None,
@@ -43,7 +41,7 @@ class Effect(Generic[_T]):
         scope: Optional[IScope] = None,
     ) -> None:
         self.__id = self._id_gen.new()
-        self._executor = executor
+        self._executor = get_executor()
         self.fn = fn
         self._upstream_refs: Set[GetterProtocol] = set()
         self._debug_name = debug_name

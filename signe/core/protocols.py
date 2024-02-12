@@ -1,8 +1,11 @@
 from __future__ import annotations
-from typing import Callable, Iterable, Protocol, TypeVar, TYPE_CHECKING
+from typing import Callable, Iterable, Optional, Protocol, TypeVar, TYPE_CHECKING, Union
+
+from signe.core.collections import Stack
 
 if TYPE_CHECKING:
     from .effect import Effect
+    from .runtime import ExecutionScheduler
 
 _T = TypeVar("_T")
 
@@ -54,4 +57,20 @@ class IScope(Protocol):
         ...
 
     def dispose(self):
+        ...
+
+
+class ExecutorProtocol(Protocol):
+    execution_scheduler_stack: Stack[ExecutionScheduler]
+
+    def mark_running_caller(self, caller: CallerProtocol):
+        ...
+
+    def reset_running_caller(self, caller: CallerProtocol):
+        ...
+
+    def get_running_caller(self) -> Optional[CallerProtocol]:
+        ...
+
+    def get_current_scheduler(self) -> ExecutionScheduler:
         ...

@@ -1,6 +1,6 @@
 from signe.core import Effect
 from signe.core.scope import IScope
-from signe.utils import get_current_executor, _GLOBAL_SCOPE_MANAGER
+from signe.utils import _GLOBAL_SCOPE_MANAGER
 from typing import (
     TypeVar,
     Callable,
@@ -56,7 +56,7 @@ def effect(
 
     if fn:
         scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
-        res = Effect(get_current_executor(), fn, **kws, scope=scope)
+        res = Effect(fn, **kws, scope=scope)
         return res
     else:
 

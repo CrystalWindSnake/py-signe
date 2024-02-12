@@ -9,6 +9,17 @@ if TYPE_CHECKING:
     from signe.core.computed import Computed
 
 
+def _defatul_executor_builder():
+    return Executor()
+
+
+executor_builder = _defatul_executor_builder
+
+
+def get_executor():
+    pass
+
+
 class Executor:
     def __init__(self) -> None:
         self._caller_running_stack = Stack[CallerProtocol]()

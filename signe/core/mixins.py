@@ -1,17 +1,17 @@
 from __future__ import annotations
-from typing import TypeVar, Generic, Set, TYPE_CHECKING
+from typing import TypeVar, Generic, Set
 
 from signe.core.protocols import CallerProtocol, GetterProtocol
 from weakref import ref as weakref
-
-if TYPE_CHECKING:
-    from .runtime import Executor
+from .protocols import ExecutorProtocol
 
 _T = TypeVar("_T")
 
 
 class Tracker(Generic[_T]):
-    def __init__(self, owner: GetterProtocol, executor: Executor, value: _T) -> None:
+    def __init__(
+        self, owner: GetterProtocol, executor: ExecutorProtocol, value: _T
+    ) -> None:
         self._owner = weakref(owner)
         self._callers: Set[CallerProtocol] = set()
         self._value = value

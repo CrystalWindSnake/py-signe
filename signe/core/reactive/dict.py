@@ -1,10 +1,9 @@
 from __future__ import annotations
 from collections import UserDict
 from dataclasses import dataclass
-from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Iterator, List
+from typing import Any, Callable, Iterator
 
 from weakref import WeakValueDictionary
-from signe.core.runtime import Executor
 from functools import partial
 
 from signe.core.signal import Signal, SignalOption
@@ -42,19 +41,18 @@ def track(
     signal = dict.get(key)
     if not signal:
         value = new_value_method()
-        signal = Signal(proxy._executor, value, sinal_opt)
+        signal = Signal(value, sinal_opt)
         dict[key] = signal
 
     return signal
 
 
 class DictProxy(UserDict):
-    def __init__(self, executor: Executor, data):
+    def __init__(self, data):
         self._key_signal_map: WeakValueDictionary[str, Signal] = WeakValueDictionary()
         self._method_signal_map: WeakValueDictionary[
             str, Signal
         ] = WeakValueDictionary()
-        self._executor = executor
         super().__init__(data)
 
     def __getitem__(self, key):

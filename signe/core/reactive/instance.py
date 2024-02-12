@@ -5,16 +5,11 @@ from weakref import WeakValueDictionary, WeakKeyDictionary
 from signe.core.signal import Signal
 
 
-if TYPE_CHECKING:
-    from signe.core.runtime import Executor
-
-
 from dataclasses import dataclass, field
 
 
 @dataclass
 class ProxyInfo:
-    executor: Executor
     key2signal: Dict[str, Signal] = field(default_factory=lambda: {})
 
 
@@ -24,11 +19,10 @@ _proxy_info_map: WeakKeyDictionary[InstanceProxy, ProxyInfo] = WeakKeyDictionary
 
 def register(
     proxy: InstanceProxy,
-    executor: Executor,
     ins,
 ):
     _ins_map[proxy] = ins
-    _proxy_info_map[proxy] = ProxyInfo(executor)
+    _proxy_info_map[proxy] = ProxyInfo()
 
 
 def track(proxy: InstanceProxy, key):
@@ -43,7 +37,7 @@ def track(proxy: InstanceProxy, key):
 
     if not signal:
         value = getattr(ins, key)
-        signal = Signal(info.executor, value)
+        signal = Signal(value)
         key_signal_map[key] = signal
 
     return signal.value
@@ -64,8 +58,8 @@ def trigger(proxy: InstanceProxy, key, value):
 
 
 class InstanceProxy:
-    def __init__(self, executor: Executor, ins) -> None:
-        register(self, executor, ins)
+    def __init__(self, ins) -> None:
+        register(self, ins)
 
     def __getattr__(self, _name: str) -> Any:
         value = track(self, _name)

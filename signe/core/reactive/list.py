@@ -4,7 +4,6 @@ from dataclasses import dataclass
 from typing import TYPE_CHECKING, Any, Callable, Dict, Iterable, Iterator, List
 
 from weakref import WeakValueDictionary
-from signe.core.runtime import Executor
 from functools import partial
 
 from signe.core.signal import Signal, SignalOption
@@ -47,20 +46,19 @@ def track(
     signal = dict.get(key)
     if not signal:
         value = new_value_method()
-        signal = Signal(proxy._executor, value, sinal_opt)
+        signal = Signal(value, sinal_opt)
         dict[key] = signal
 
     return signal
 
 
 class ListProxy(UserList):
-    def __init__(self, executor: Executor, initlist):
+    def __init__(self, initlist):
         super().__init__(initlist)
         self._index_signal_map: WeakValueDictionary[int, Signal] = WeakValueDictionary()
         self._method_signal_map: WeakValueDictionary[
             str, Signal
         ] = WeakValueDictionary()
-        self._executor = executor
 
     def __getitem__(self, i):
         signal = track(self, self._index_signal_map, i, partial(super().__getitem__, i))

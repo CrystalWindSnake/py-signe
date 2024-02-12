@@ -4,7 +4,7 @@ from signe.core.effect import Effect
 from signe.core.computed import Computed
 from signe.core.scope import Scope, IScope
 from contextlib import contextmanager
-from functools import lru_cache
+import signe.core.context as context
 import inspect
 from dataclasses import dataclass
 
@@ -70,19 +70,6 @@ class GlobalScopeManager:
 _GLOBAL_SCOPE_MANAGER = GlobalScopeManager()
 
 
-_executor_builder = None
-
-
-def set_executor(executor: Executor):
-    global _executor_builder
-    _executor_builder = executor
-
-
-@lru_cache(maxsize=1)
-def get_current_executor():
-    return _executor_builder or Executor()
-
-
 @contextmanager
 def scope():
     scope = _GLOBAL_SCOPE_MANAGER.new_scope()
@@ -127,7 +114,7 @@ def createSignal(
     comp: TSignalOptionInitComp[T] = None,
     debug_name: Optional[str] = None,
 ):
-    s = Signal(get_current_executor(), value, SignalOption(comp), debug_name)
+    s = Signal(value, SignalOption(comp), debug_name)
 
     getter = Getter[T](s)
     setter = Setter[T](s)
@@ -178,7 +165,7 @@ def effect(
 
     if fn:
         scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
-        res = Effect(get_current_executor(), fn, **kws, scope=scope)
+        res = Effect(fn, **kws, scope=scope)
 
         return res
     else:
@@ -233,7 +220,7 @@ def computed(
 
     if fn:
         scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
-        cp = Computed(get_current_executor(), fn, **kws, scope=scope)
+        cp = Computed(fn, **kws, scope=scope)
         getter = Getter(cp)
 
         return getter
@@ -306,24 +293,25 @@ def computed(
 
 
 def batch(fn: Callable[[], None]):
-    if isinstance(
-        get_current_executor().get_current_scheduler(), BatchExecutionScheduler
-    ):
+    executor = context.get_executor()
+    scheduler = executor.get_current_scheduler()
+
+    if isinstance(scheduler, BatchExecutionScheduler):
         fn()
         return
 
     batch_exec = BatchExecutionScheduler()
 
     try:
-        get_current_executor().execution_scheduler_stack.set_current(batch_exec)
+        executor.execution_scheduler_stack.set_current(batch_exec)
         fn()
         batch_exec.run_batch()
     finally:
-        get_current_executor().execution_scheduler_stack.reset_current()
+        executor.execution_scheduler_stack.reset_current()
 
 
 def cleanup(fn: Callable[[], None]):
-    current_caller = get_current_executor().get_running_caller()
+    current_caller = context.get_executor().get_running_caller()
     if current_caller:
         current_caller.add_cleanup(fn)
 

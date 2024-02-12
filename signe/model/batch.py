@@ -1,22 +1,24 @@
 from signe.core.runtime import BatchExecutionScheduler
-from signe.utils import get_current_executor
 from typing import (
     Callable,
 )
 
+from signe.core.context import get_executor
+
 
 def batch(fn: Callable[[], None]):
-    if isinstance(
-        get_current_executor().get_current_scheduler(), BatchExecutionScheduler
-    ):
+    executor = get_executor()
+    scheduler = executor.get_current_scheduler()
+
+    if isinstance(scheduler, BatchExecutionScheduler):
         fn()
         return
 
     batch_exec = BatchExecutionScheduler()
 
     try:
-        get_current_executor().execution_scheduler_stack.set_current(batch_exec)
+        executor.execution_scheduler_stack.set_current(batch_exec)
         fn()
         batch_exec.run_batch()
     finally:
-        get_current_executor().execution_scheduler_stack.reset_current()
+        executor.execution_scheduler_stack.reset_current()

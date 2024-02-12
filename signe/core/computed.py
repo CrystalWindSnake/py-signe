@@ -22,7 +22,6 @@ _T = TypeVar("_T")
 class Computed(Effect[_T]):
     def __init__(
         self,
-        executor: Executor,
         fn: Callable[[], _T],
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
@@ -30,7 +29,6 @@ class Computed(Effect[_T]):
         scope: Optional[IScope] = None,
     ) -> None:
         super().__init__(
-            executor,
             fn,
             False,
             None,
@@ -39,7 +37,7 @@ class Computed(Effect[_T]):
             debug_name,
             scope=scope,
         )
-        self.tracker = cast(Tracker[_T], Tracker(self, executor, None))
+        self.tracker = cast(Tracker[_T], Tracker(self, self._executor, None))
 
     @property
     def is_effect(self) -> bool:

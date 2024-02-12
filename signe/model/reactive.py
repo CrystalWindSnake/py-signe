@@ -1,6 +1,6 @@
 from datetime import date, datetime
-from signe.utils import get_current_executor
 from typing import Dict, List, Mapping, TypeVar, Union, overload, cast, Iterable
+from signe.core.context import get_executor
 
 T = TypeVar("T")
 P = TypeVar("P")
@@ -28,8 +28,8 @@ def reactive(obj: Union[List, Dict, T]) -> Union[List, Dict, T]:
         return obj
 
     if isinstance(obj, Mapping):
-        return cast(Dict, DictProxy(get_current_executor(), obj))
+        return cast(Dict, DictProxy(obj))
     if isinstance(obj, Iterable):
-        return cast(List, ListProxy(get_current_executor(), obj))
+        return cast(List, ListProxy(obj))
 
-    return cast(T, InstanceProxy(get_current_executor(), obj))
+    return cast(T, InstanceProxy(obj))
