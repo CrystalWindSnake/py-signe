@@ -69,6 +69,7 @@ class Effect(Generic[_T]):
             assert on
             for getter in on:
                 getter.mark_caller(self)
+                self.add_upstream_ref(getter)
 
         if immediate:
             self.update()
