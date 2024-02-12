@@ -1,7 +1,7 @@
 from __future__ import annotations
 from collections import UserDict
 from dataclasses import dataclass
-from typing import Any, Callable, Iterator
+from typing import Any, Callable, Dict, Iterator
 
 from weakref import WeakValueDictionary
 from functools import partial
@@ -35,9 +35,7 @@ _method_triggers = {
 }
 
 
-def track(
-    proxy: DictProxy, dict: WeakValueDictionary, key, new_value_method, sinal_opt=None
-):
+def track(proxy: DictProxy, dict: Dict, key, new_value_method, sinal_opt=None):
     signal = dict.get(key)
     if not signal:
         value = new_value_method()
@@ -49,10 +47,8 @@ def track(
 
 class DictProxy(UserDict):
     def __init__(self, data):
-        self._key_signal_map: WeakValueDictionary[str, Signal] = WeakValueDictionary()
-        self._method_signal_map: WeakValueDictionary[
-            str, Signal
-        ] = WeakValueDictionary()
+        self._key_signal_map: Dict[str, Signal] = {}
+        self._method_signal_map: Dict[str, Signal] = {}
         super().__init__(data)
 
     def __getitem__(self, key):

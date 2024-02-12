@@ -40,12 +40,11 @@ _method_triggers = {
 }
 
 
-def track(
-    proxy: ListProxy, dict: WeakValueDictionary, key, new_value_method, sinal_opt=None
-):
+def track(proxy: ListProxy, dict: Dict, key, new_value_method, sinal_opt=None):
     signal = dict.get(key)
     if not signal:
         value = new_value_method()
+        value = reactive(value)
         signal = Signal(value, sinal_opt)
         dict[key] = signal
 
@@ -55,17 +54,13 @@ def track(
 class ListProxy(UserList):
     def __init__(self, initlist):
         super().__init__(initlist)
-        self._index_signal_map: WeakValueDictionary[int, Signal] = WeakValueDictionary()
-        self._method_signal_map: WeakValueDictionary[
-            str, Signal
-        ] = WeakValueDictionary()
+        self._index_signal_map: Dict[int, Signal] = {}
+        self._method_signal_map: Dict[str, Signal] = {}
 
     def __getitem__(self, i):
         signal = track(self, self._index_signal_map, i, partial(super().__getitem__, i))
 
-        obj = reactive(signal.value)
-        signal.value = obj
-        return obj
+        return signal.value
 
     def __setitem__(self, i, item):
         self.data[i] = item
