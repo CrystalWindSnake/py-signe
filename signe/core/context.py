@@ -22,7 +22,3 @@ def set_executor_builder(fn: Callable[[], ExecutorProtocol]):
 
 def get_executor() -> ExecutorProtocol:
     return _executor_builder()
-
-
-def track():
-    pass

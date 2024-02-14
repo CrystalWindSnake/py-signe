@@ -76,13 +76,7 @@ class ExecutionScheduler:
         self.__running = True
 
         try:
-            while (
-                self._pending_queue
-                # or self._computed_change_points
-                or self._effect_updates
-            ):
-                # self._run_signal_updates()
-                # self._run_computed_updates()
+            while self._pending_queue or self._effect_updates:
                 self._run_pending_updates()
                 self._run_effect_updates()
 
@@ -104,22 +98,6 @@ class ExecutionScheduler:
                     self._effect_updates[effect] = None
 
         self._pending_queue.clear()
-
-    # def _run_signal_updates(self):
-    #     for getter in self._signal_change_points:
-    #         effects = self.__get_pending_or_update_effects(getter)
-    #         for effect in effects:
-    #             self._effect_updates[effect] = None
-
-    #     self._signal_change_points.clear()
-
-    # def _run_computed_updates(self):
-    #     for getter in self._computed_change_points:
-    #         effects = self.__get_pending_or_update_effects(getter)
-    #         for effect in effects:
-    #             self._effect_updates[effect] = None
-
-    #     self._computed_change_points.clear()
 
     def _run_effect_updates(self):
         for effect in self._effect_updates:

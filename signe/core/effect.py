@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import (
-    TYPE_CHECKING,
     Any,
     List,
     Set,
@@ -52,7 +51,6 @@ class Effect(Generic[_T]):
         self._state: EffectState = "INIT"
         self._pending_count = 0
         self._cleanups: List[Callable[[], None]] = []
-        # self.priority_level = priority_level
 
         if scope:
             scope.add_effect(self)

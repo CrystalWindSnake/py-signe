@@ -1,20 +1,14 @@
 from __future__ import annotations
 from typing import (
-    TYPE_CHECKING,
     TypeVar,
     Callable,
     Optional,
-    cast,
 )
-from signe.core.mixins import DepManager
+from signe.core.deps import DepManager
 
-# from signe.core.mixins import Tracker
-from signe.core.protocols import CallerProtocol, GetterProtocol, IScope
+from signe.core.protocols import CallerProtocol, IScope
 
 from .effect import Effect
-
-if TYPE_CHECKING:
-    from .runtime import Executor
 
 
 _T = TypeVar("_T")

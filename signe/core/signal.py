@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import (
-    TYPE_CHECKING,
     TypeVar,
     Generic,
     Callable,
@@ -11,7 +10,7 @@ from typing import (
 from signe.core.idGenerator import IdGen
 from signe.core.protocols import CallerProtocol
 
-from signe.core.mixins import DepManager
+from signe.core.deps import DepManager
 from .context import get_executor
 
 
@@ -61,9 +60,6 @@ class Signal(Generic[T]):
     def get_value_without_track(self):
         return self._value
 
-    # def track(self):
-    #     self.tracker.track()
-
     @property
     def callers(self):
         return self._dep_manager.get_callers("value")
@@ -99,19 +95,6 @@ class Signal(Generic[T]):
         self._value = value
 
         self._dep_manager.triggered("value", value)
-
-    # def _update_caller_state(self):
-    #     for caller in self.tracker.callers:
-    #         caller.update_pending(self, is_change_point=True)
-
-    def __hash__(self) -> int:
-        return hash(self.id)
-
-    def __eq__(self, __value: object) -> bool:
-        if isinstance(__value, self.__class__):
-            return self.__hash__() == __value.__hash__()
-
-        return False
 
     def __repr__(self) -> str:
         return f"Signal(id= {self.id} , name = {self.__debug_name})"
