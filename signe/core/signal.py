@@ -96,5 +96,14 @@ class Signal(Generic[T]):
 
         self._dep_manager.triggered("value", value)
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, __value: object) -> bool:
+        if isinstance(__value, self.__class__):
+            return self.__hash__() == __value.__hash__()
+
+        return False
+
     def __repr__(self) -> str:
         return f"Signal(id= {self.id} , name = {self.__debug_name})"

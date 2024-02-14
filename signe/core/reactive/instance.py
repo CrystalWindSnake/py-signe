@@ -1,20 +1,11 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING, Dict
+from typing import Any, TYPE_CHECKING, Dict, cast
 from weakref import WeakValueDictionary, WeakKeyDictionary
-
-from signe.core.signal import Signal
-
-
-from dataclasses import dataclass, field
-
-
-@dataclass
-class ProxyInfo:
-    key2signal: Dict[str, Signal] = field(default_factory=lambda: {})
+from signe.core.deps import DepManager
 
 
 _ins_map: WeakValueDictionary[InstanceProxy, object] = WeakValueDictionary()
-_proxy_info_map: WeakKeyDictionary[InstanceProxy, ProxyInfo] = WeakKeyDictionary()
+_proxy_dep_map: WeakKeyDictionary[InstanceProxy, DepManager] = WeakKeyDictionary()
 
 
 def register(
@@ -22,39 +13,31 @@ def register(
     ins,
 ):
     _ins_map[proxy] = ins
-    _proxy_info_map[proxy] = ProxyInfo()
+    _proxy_dep_map[proxy] = DepManager(ins)
 
 
 def track(proxy: InstanceProxy, key):
     ins = _ins_map.get(proxy)
-    info = _proxy_info_map.get(proxy)
-
+    dep_manager = _proxy_dep_map.get(proxy)
     assert ins
-    assert info
-    key_signal_map = info.key2signal
+    assert dep_manager
 
-    signal = key_signal_map.get(key)
+    dep_manager.tracked(key)
 
-    if not signal:
-        value = getattr(ins, key)
-        signal = Signal(value)
-        key_signal_map[key] = signal
+    value = getattr(ins, key)
 
-    return signal.value
+    return value
 
 
 def trigger(proxy: InstanceProxy, key, value):
     ins = _ins_map.get(proxy)
-    info = _proxy_info_map.get(proxy)
+    dep_manager = _proxy_dep_map.get(proxy)
 
     assert ins
-    assert info
-    key_signal_map = info.key2signal
+    assert dep_manager
 
-    signal = key_signal_map.get(key)
-    if not signal:
-        return
-    signal.value = value
+    setattr(ins, key, value)
+    dep_manager.triggered(key, value)
 
 
 class InstanceProxy:

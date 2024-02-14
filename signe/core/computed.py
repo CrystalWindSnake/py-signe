@@ -7,6 +7,7 @@ from typing import (
 from signe.core.deps import DepManager
 
 from signe.core.protocols import CallerProtocol, IScope
+from signe.core.utils import common_not_eq_value
 
 from .effect import Effect
 
@@ -32,7 +33,6 @@ class Computed(Effect[_T]):
             debug_name,
             scope=scope,
         )
-        # self.tracker = cast(Tracker[_T], Tracker(self, self._executor, None))
         self._value = None
         self._dep_manager = DepManager(self)
 
@@ -59,16 +59,10 @@ class Computed(Effect[_T]):
     def _update_value(self, mark_change_point=True):
         new_value = self.update()
 
-        if self.__not_eq_value(self._value, new_value) and mark_change_point:
+        if common_not_eq_value(self._value, new_value) and mark_change_point:
             self._dep_manager.triggered("value", new_value)
 
         self._value = new_value
-
-    def __not_eq_value(self, a, b):
-        try:
-            return bool(a != b)
-        except ValueError:
-            return True
 
     def mark_caller(self, caller: CallerProtocol):
         self._dep_manager.mark_caller(caller, "value")
