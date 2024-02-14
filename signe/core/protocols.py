@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import Callable, Iterable, Optional, Protocol, TypeVar, TYPE_CHECKING, Union
 
 from signe.core.collections import Stack
+from .consts import EffectState
 
 if TYPE_CHECKING:
     from .effect import Effect
@@ -37,15 +38,24 @@ class CallerProtocol(Protocol[_T]):
     def is_effect(self) -> bool:
         ...
 
+    @property
+    def state(self) -> EffectState:
+        ...
+
     def update(self) -> _T:
+        ...
+
+    @property
+    def is_pending(self) -> bool:
+        ...
+
+    def update_state(self, state: EffectState):
         ...
 
     def add_upstream_ref(self, getter: GetterProtocol):
         ...
 
-    def update_pending(
-        self, getter: GetterProtocol, is_change_point: bool = True, is_set_pending=True
-    ):
+    def update_pending(self, is_change_point: bool = True, is_set_pending=True):
         ...
 
     def add_cleanup(self, fn: Callable[[], None]):

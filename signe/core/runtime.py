@@ -48,6 +48,9 @@ class Executor:
 class ExecutionScheduler:
     def __init__(self) -> None:
         self._signal_change_points: Dict[Signal, None] = {}
+
+        self._pending_queue: Dict[CallerProtocol, None] = {}
+
         self._computed_change_points: Dict[Computed, None] = {}
         self._effect_updates: Dict[Effect, None] = {}
         self.__running = False
@@ -62,18 +65,25 @@ class ExecutionScheduler:
     def mark_computed_change_point(self, computed: Computed):
         self._computed_change_points[computed] = None
 
+    def mark_pending(self, caller: CallerProtocol):
+        self._pending_queue[caller] = None
+
+    def mark_update(self, caller: CallerProtocol):
+        self._effect_updates[cast(Effect, caller)] = None
+
     def run(self):
         count = 0
         self.__running = True
 
         try:
             while (
-                self._signal_change_points
-                or self._computed_change_points
+                self._pending_queue
+                # or self._computed_change_points
                 or self._effect_updates
             ):
-                self._run_signal_updates()
-                self._run_computed_updates()
+                # self._run_signal_updates()
+                # self._run_computed_updates()
+                self._run_pending_updates()
                 self._run_effect_updates()
 
                 count += 1
@@ -82,21 +92,34 @@ class ExecutionScheduler:
         finally:
             self.__running = False
 
-    def _run_signal_updates(self):
-        for getter in self._signal_change_points:
-            effects = self.__get_pending_or_update_effects(getter)
-            for effect in effects:
-                self._effect_updates[effect] = None
+    def _run_pending_updates(self):
+        for caller in self._pending_queue:
+            if caller.is_effect and caller.state == "NEED_UPDATE":
+                self.mark_update(caller)
+                continue
 
-        self._signal_change_points.clear()
+            if caller.is_pending:
+                effects = self.__get_pending_or_update_effects(caller)
+                for effect in effects:
+                    self._effect_updates[effect] = None
 
-    def _run_computed_updates(self):
-        for getter in self._computed_change_points:
-            effects = self.__get_pending_or_update_effects(getter)
-            for effect in effects:
-                self._effect_updates[effect] = None
+        self._pending_queue.clear()
 
-        self._computed_change_points.clear()
+    # def _run_signal_updates(self):
+    #     for getter in self._signal_change_points:
+    #         effects = self.__get_pending_or_update_effects(getter)
+    #         for effect in effects:
+    #             self._effect_updates[effect] = None
+
+    #     self._signal_change_points.clear()
+
+    # def _run_computed_updates(self):
+    #     for getter in self._computed_change_points:
+    #         effects = self.__get_pending_or_update_effects(getter)
+    #         for effect in effects:
+    #             self._effect_updates[effect] = None
+
+    #     self._computed_change_points.clear()
 
     def _run_effect_updates(self):
         for effect in self._effect_updates:
@@ -109,9 +132,9 @@ class ExecutionScheduler:
         self._effect_updates.clear()
 
     def __get_pending_or_update_effects(
-        self, getter: GetterProtocol
+        self, caller: CallerProtocol
     ) -> Iterable[Effect]:
-        stack: List[CallerProtocol] = list(getter.callers)
+        stack: List[CallerProtocol] = [caller]
         result: List[Effect] = []
 
         while len(stack):

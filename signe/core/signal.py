@@ -11,7 +11,7 @@ from typing import (
 from signe.core.idGenerator import IdGen
 from signe.core.protocols import CallerProtocol
 
-from signe.core.mixins import Tracker
+from signe.core.mixins import DepManager
 from .context import get_executor
 
 
@@ -48,7 +48,7 @@ class Signal(Generic[T]):
         self._value = value
 
         self._executor = get_executor()
-        self.tracker = Tracker(self, self._executor, value)
+        self._dep_manager = DepManager(self)
 
         self.option = option or SignalOption[T]()
         self.__debug_name = debug_name
@@ -58,12 +58,15 @@ class Signal(Generic[T]):
     def id(self):
         return self.__id
 
-    def track(self):
-        self.tracker.track()
+    def get_value_without_track(self):
+        return self._value
+
+    # def track(self):
+    #     self.tracker.track()
 
     @property
     def callers(self):
-        return self.tracker.callers
+        return self._dep_manager.get_callers("value")
 
     @property
     def is_signal(self) -> bool:
@@ -71,39 +74,35 @@ class Signal(Generic[T]):
 
     @property
     def value(self):
-        return self.tracker.get_value_with_track()
+        self._dep_manager.tracked("value")
+
+        return self._value
 
     @value.setter
     def value(self, value: T):
         self.__setValue(value)
 
     def mark_caller(self, caller: CallerProtocol):
-        self.tracker.mark_caller(caller)
+        self._dep_manager.mark_caller(caller, "value")
 
     def remove_caller(self, caller: CallerProtocol):
-        self.tracker.remove_caller(caller)
+        self._dep_manager.remove_caller(caller)
 
     def __setValue(self, value: Union[T, Callable[[T], T]]):
-        org_value = self.tracker.get_value_without_track()
+        org_value = self._value
         if isinstance(value, Callable):
             value = value(org_value)  # type: ignore
 
         if self._option_comp(org_value, value):  # type: ignore
             return
 
-        self.tracker.update_value(cast(T, value))
+        self._value = value
 
-        scheduler = self._executor.get_current_scheduler()
-        scheduler.mark_signal_change_point(self)
+        self._dep_manager.triggered("value", value)
 
-        self._update_caller_state()
-
-        if not scheduler.is_running:
-            scheduler.run()
-
-    def _update_caller_state(self):
-        for caller in self.tracker.callers:
-            caller.update_pending(self, is_change_point=True)
+    # def _update_caller_state(self):
+    #     for caller in self.tracker.callers:
+    #         caller.update_pending(self, is_change_point=True)
 
     def __hash__(self) -> int:
         return hash(self.id)

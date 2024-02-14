@@ -50,7 +50,7 @@ class Effect(Generic[_T]):
         self.auto_collecting_dep = not bool(on)
 
         self._state: EffectState = "INIT"
-        self._pending_deps: Set[GetterProtocol] = set()
+        self._pending_count = 0
         self._cleanups: List[Callable[[], None]] = []
         # self.priority_level = priority_level
 
@@ -98,6 +98,9 @@ class Effect(Generic[_T]):
     def add_upstream_ref(self, getter: GetterProtocol):
         self._upstream_refs.add(getter)
 
+    def update_state(self, state: EffectState):
+        self._state = state
+
     def made_upstream_confirm_state(self):
         for us in self._upstream_refs:
             if isinstance(us, Effect):
@@ -126,19 +129,17 @@ class Effect(Generic[_T]):
             self._state = "STALE"
             self._executor.reset_running_caller(self)
 
-    def update_pending(
-        self, getter: GetterProtocol, is_change_point: bool = True, is_set_pending=True
-    ):
+    def update_pending(self, is_change_point: bool = True, is_set_pending=True):
         if is_change_point:
             self._state = "NEED_UPDATE"
             return
 
         if is_set_pending:
-            self._pending_deps.add(getter)
+            self._pending_count += 1
         else:
-            self._pending_deps.remove(getter)
+            self._pending_count -= 1
 
-        cur_is_pending = len(self._pending_deps) > 0
+        cur_is_pending = self._pending_count > 0
 
         if cur_is_pending:
             self._state = "PENDING"
@@ -150,7 +151,7 @@ class Effect(Generic[_T]):
         self._upstream_refs.clear()
 
     def dispose(self):
-        self._pending_deps.clear()
+        # self._pending_deps.clear()
         self._clear_all_deps()
         self._exec_cleanups()
         self._dispose_sub_effects()
@@ -160,6 +161,10 @@ class Effect(Generic[_T]):
             sub.dispose()
 
         self._sub_effects.clear()
+
+    @property
+    def is_pending(self) -> bool:
+        return self.state == "PENDING"
 
     def _exec_cleanups(self):
         for fn in self._cleanups:

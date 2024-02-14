@@ -6,8 +6,9 @@ from typing import (
     Optional,
     cast,
 )
+from signe.core.mixins import DepManager
 
-from signe.core.mixins import Tracker
+# from signe.core.mixins import Tracker
 from signe.core.protocols import CallerProtocol, GetterProtocol, IScope
 
 from .effect import Effect
@@ -37,7 +38,9 @@ class Computed(Effect[_T]):
             debug_name,
             scope=scope,
         )
-        self.tracker = cast(Tracker[_T], Tracker(self, self._executor, None))
+        # self.tracker = cast(Tracker[_T], Tracker(self, self._executor, None))
+        self._value = None
+        self._dep_manager = DepManager(self)
 
     @property
     def is_effect(self) -> bool:
@@ -49,28 +52,23 @@ class Computed(Effect[_T]):
 
     @property
     def callers(self):
-        return self.tracker.callers
+        return self._dep_manager.get_callers("value")
 
     @property
     def value(self):
         if self.state == "INIT" or self.state == "PENDING":
             self._update_value(mark_change_point=self.state == "PENDING")
 
-        return self.tracker.get_value_with_track()
+        self._dep_manager.tracked("value")
+        return self._value
 
     def _update_value(self, mark_change_point=True):
         new_value = self.update()
 
-        if (
-            self.__not_eq_value(self.tracker.get_value_without_track(), new_value)
-            and mark_change_point
-        ):
-            scheduler = self._executor.get_current_scheduler()
-            scheduler.mark_computed_change_point(self)
+        if self.__not_eq_value(self._value, new_value) and mark_change_point:
+            self._dep_manager.triggered("value", new_value)
 
-            self._update_caller_state()
-
-        self.tracker.update_value(new_value)
+        self._value = new_value
 
     def __not_eq_value(self, a, b):
         try:
@@ -78,43 +76,36 @@ class Computed(Effect[_T]):
         except ValueError:
             return True
 
-    def _update_caller_state(self):
-        for caller in self.tracker.callers:
-            caller.update_pending(self, is_change_point=True)
-
     def mark_caller(self, caller: CallerProtocol):
-        self.tracker.mark_caller(caller)
+        self._dep_manager.mark_caller(caller, "value")
 
     def remove_caller(self, caller: CallerProtocol):
-        self.tracker.remove_caller(caller)
+        self._dep_manager.remove_caller(caller)
 
     def confirm_state(self):
         self._update_value()
 
     def update_pending(
         self,
-        getter: GetterProtocol,
         is_change_point: bool = True,
         is_set_pending=True,
     ):
-        pre_is_pending = len(self._pending_deps) > 0
+        pre_is_pending = self._pending_count > 0
 
         if is_set_pending:
-            self._pending_deps.add(getter)
+            self._pending_count += 1
         else:
-            self._pending_deps.remove(getter)
+            self._pending_count -= 1
 
-        cur_is_pending = len(self._pending_deps) > 0
+        cur_is_pending = self._pending_count > 0
 
         if cur_is_pending:
             self._state = "PENDING"
 
-        cur_is_pending = len(self._pending_deps) > 0
-
         if pre_is_pending ^ cur_is_pending:
             # pending state changed,nodify getters
             for caller in self.callers:
-                caller.update_pending(self, False, cur_is_pending)
+                caller.update_pending(False, cur_is_pending)
 
     def __repr__(self) -> str:
         return f"Computed(id ={self.id}, name={self._debug_name})"
