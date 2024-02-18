@@ -1,6 +1,6 @@
 from signe.core.computed import Computed
 from signe.core.signal import Signal
-from signe.model.types import TMaybeSignal
+from .types import TMaybeSignal
 
 
 def is_signal(obj: TMaybeSignal):

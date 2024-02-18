@@ -1,7 +1,7 @@
 import json
 import _imports
 import pytest
-from signe import createReactive, effect, computed, createSignal
+from signe.core import reactive, effect, computed, signal
 import utils
 from typing import Callable
 import math
@@ -15,27 +15,27 @@ class Test_effect_basic:
         assert fn_spy.calledTimes == 1
 
     def test_no_exec_has_not_changed(self):
-        count, set_count = createSignal(0)
+        count = signal(0)
 
         @computed
         def is_even():
-            return count() % 2 == 0
+            return count.value % 2 == 0
 
         @utils.fn
         def fn_spy():
-            is_even()
+            is_even.value
 
         effect(fn_spy)
 
         # not run
         assert fn_spy.calledTimes == 1
 
-        set_count(2)
+        count.value = 2
         assert fn_spy.calledTimes == 1
 
     def test_observe_basic_prop(self):
         dummy = None
-        obj = createReactive({"num": 0})
+        obj = reactive({"num": 0})
 
         @effect
         def _():
@@ -48,7 +48,7 @@ class Test_effect_basic:
 
     def test_observe_multiple_prop(self):
         dummy = None
-        obj = createReactive({"num1": 0, "num2": 0})
+        obj = reactive({"num1": 0, "num2": 0})
 
         @effect
         def _():
@@ -64,7 +64,7 @@ class Test_effect_basic:
     def test_handle_multiple_effects(self):
         dummy1 = None
         dummy2 = None
-        obj = createReactive({"num": 0})
+        obj = reactive({"num": 0})
 
         @effect
         def _():
@@ -86,7 +86,7 @@ class Test_effect_basic:
 
     def test_observe_nested_props(self):
         dummy = None
-        obj = createReactive({"nested": {"num": 0}})
+        obj = reactive({"nested": {"num": 0}})
 
         @effect
         def _():
@@ -101,7 +101,7 @@ class Test_effect_basic:
 
     def test_observe_del_operations(self):
         dummy = None
-        obj = createReactive({"prop": "value"})
+        obj = reactive({"prop": "value"})
 
         @effect
         def _():
@@ -120,7 +120,7 @@ class Test_effect_basic:
 
     def test_observe_in_operations(self):
         dummy = None
-        obj = createReactive({"prop": "value"})
+        obj = reactive({"prop": "value"})
 
         @effect
         def _():
@@ -137,7 +137,7 @@ class Test_effect_basic:
 
     def test_observe_func_call_chains(self):
         dummy = None
-        obj = createReactive({"num": 0})
+        obj = reactive({"num": 0})
 
         def getNum():
             return obj["num"]
@@ -154,7 +154,7 @@ class Test_effect_basic:
 
     def test_observe_iter(self):
         dummy = None
-        obj = createReactive(["hello"])
+        obj = reactive(["hello"])
 
         @effect
         def _():
@@ -171,7 +171,7 @@ class Test_effect_basic:
 
     def test_observe_with_keys(self):
         dummy = None
-        obj = createReactive({"num": 0})
+        obj = reactive({"num": 0})
 
         @effect
         def _():
@@ -185,7 +185,7 @@ class Test_effect_basic:
 
     def test_observe_set_key(self):
         dummy = 0
-        obj = createReactive({1: "a1"})
+        obj = reactive({1: "a1"})
 
         @utils.fn
         def lenSpy():
@@ -214,7 +214,7 @@ class Test_effect_basic:
             pass
 
         dummy = None
-        obj = createReactive({"func": oldFunc})
+        obj = reactive({"func": oldFunc})
 
         @effect
         def _():
@@ -230,23 +230,23 @@ class Test_effect_basic:
             return obj["a"]
 
         dummy = None
-        obj = createReactive({"a": 1, "b": get_a})
+        obj = reactive({"a": 1, "b": get_a})
 
         @effect
         def _():
             nonlocal dummy
-            dummy = obj["b"]()
+            dummy = obj["b"]()  # type: ignore
 
         assert dummy == 1
 
-        obj["a"] += 1
+        obj["a"] += 1  # type: ignore
 
         assert dummy == 2
 
     def test_not_observe_set_oper_without_value_change(self):
         hasDummy = getDummy = None
 
-        obj = createReactive({"prop": "value"})
+        obj = reactive({"prop": "value"})
 
         @utils.fn
         def getSpy():
@@ -275,7 +275,7 @@ class Test_effect_basic:
     @utils.mark_todo
     def test_not_observe_raw(self):
         dummy = None
-        obj = createReactive({"prop": "value"})
+        obj = reactive({"prop": "value"})
 
         @effect
         def _():
@@ -289,7 +289,7 @@ class Test_effect_basic:
     @utils.mark_todo
     def test_not_triggered_by_raw(self):
         dummy = None
-        obj = createReactive({"prop": "value"})
+        obj = reactive({"prop": "value"})
 
         @effect
         def _():
@@ -302,7 +302,7 @@ class Test_effect_basic:
 
     @utils.mark_todo
     def test_avoid_implicit_infinite_recursive_loops_with_itself(self):
-        counter = createReactive({"num": 0})
+        counter = reactive({"num": 0})
 
         @utils.fn
         def counter_spy():
@@ -320,7 +320,7 @@ class Test_effect_basic:
 
     @utils.mark_todo
     def test_allow_explicitly_recursive_raw_function_loops(self):
-        counter = createReactive({"num": 0})
+        counter = reactive({"num": 0})
 
         @utils.fn
         def num_spy():
@@ -335,7 +335,7 @@ class Test_effect_basic:
         assert num_spy.calledTimes == 10
 
     def test_avoid_infinite_loops_with_other_effects(self):
-        nums = createReactive({"num1": 0, "num2": 1})
+        nums = reactive({"num1": 0, "num2": 1})
 
         @utils.fn
         def spy1():
@@ -385,7 +385,7 @@ class Test_effect_basic:
 
     def test_discover_new_branches_while_running_automatically(self):
         dummy = None
-        obj = createReactive({"prop": "value", "run": False})
+        obj = reactive({"prop": "value", "run": False})
 
         @utils.fn
         def conditionalSpy():
@@ -413,7 +413,7 @@ class Test_effect_basic:
     def test_discover_new_branches_when_running_manually(self):
         dummy = None
         run = False
-        obj = createReactive({"prop": "value"})
+        obj = reactive({"prop": "value"})
 
         @effect
         def runner():
@@ -433,7 +433,7 @@ class Test_effect_basic:
         self,
     ):
         dummy = None
-        obj = createReactive({"prop": "value", "run": True})
+        obj = reactive({"prop": "value", "run": True})
 
         @utils.fn
         def conditionalSpy():
@@ -454,7 +454,7 @@ class Test_effect_basic:
         assert conditionalSpy.calledTimes == 2
 
     def test_should_handle_deep_effect_recursion_using_cleanup_fallback(self):
-        results = createReactive([0] * 40)
+        results = reactive([0] * 40)
         effects = []
 
         for i in range(1, 40):
@@ -474,8 +474,8 @@ class Test_effect_basic:
 
     @utils.mark_todo
     def test_should_register_deps_independently_during_effect_recursion(self):
-        input = createReactive({"a": 1, "b": 2, "c": 0})
-        output = createReactive({"fx1": 0, "fx2": 0})
+        input = reactive({"a": 1, "b": 2, "c": 0})
+        output = reactive({"fx1": 0, "fx2": 0})
 
         @utils.fn
         def fx1Spy():
@@ -553,7 +553,7 @@ class Test_effect_basic:
 
     @utils.mark_todo
     def test_should_not_double_wrap_if_the_passed_function_is_a_effect(self):
-        runner = effect(lambda: ())
+        runner = effect(lambda: ())  # type: ignore
         otherRunner = effect(runner)
 
         assert runner is not otherRunner
@@ -561,7 +561,7 @@ class Test_effect_basic:
 
     def test_should_not_run_multiple_times_for_a_single_mutation(self):
         dummy = None
-        obj = createReactive({})
+        obj = reactive({})
 
         @utils.fn
         def fnSpy():
@@ -582,7 +582,7 @@ class Test_effect_basic:
 
     @utils.mark_todo
     def test_should_allow_nested_effects(self):
-        nums = createReactive({"num1": 0, "num2": 1, "num3": 2})
+        nums = reactive({"num1": 0, "num2": 1, "num3": 2})
         dummy = {}
 
         @utils.fn
@@ -624,7 +624,7 @@ class Test_effect_basic:
     @utils.mark_todo
     def test_should_observe_json_methods(self):
         dummy = {}
-        obj = createReactive({})
+        obj = reactive({})
 
         @effect
         def _():
@@ -644,7 +644,7 @@ class Test_effect_basic:
             def inc(self):
                 self.calledTimes += 1
 
-        model = createReactive(Model())
+        model = reactive(Model())
         dummy = None
 
         @effect
@@ -657,7 +657,7 @@ class Test_effect_basic:
         assert dummy == 1
 
     def test_lazy(self):
-        obj = createReactive({"foo": 1})
+        obj = reactive({"foo": 1})
         dummy = None
 
         @computed
@@ -689,7 +689,7 @@ class Test_effect_basic:
     @utils.mark_todo
     def test_stop(self):
         dummy = None
-        obj = createReactive({"prop": 1})
+        obj = reactive({"prop": 1})
 
         @effect
         def runner():
@@ -721,9 +721,9 @@ class Test_effect_basic:
         assert other.priority_level == 999
 
     def test_should_auto_release_sub_effect(self):
-        isLogging, set_isLogging = createSignal(True)
+        isLogging = signal(True)
 
-        dummy, set_dummy = createSignal(None, comp=False)
+        dummy = signal(None, comp=False)
 
         @utils.fn
         def spy1():
@@ -731,28 +731,28 @@ class Test_effect_basic:
 
         @effect
         def _():
-            if isLogging():
+            if isLogging.value:
 
                 @effect
                 def _():
                     spy1()
-                    dummy()
+                    dummy.value
 
         assert spy1.calledTimes == 1
 
-        set_dummy(None)
+        dummy.value = None
         assert spy1.calledTimes == 2
 
-        set_isLogging(False)
+        isLogging.value = False
         assert spy1.calledTimes == 2
 
-        set_dummy(None)
+        dummy.value = None
         assert spy1.calledTimes == 2
 
     def test_should_not_auto_release_external_cumputed(self):
-        isLogging, set_isLogging = createSignal(True)
+        isLogging = signal(True)
 
-        dummy, set_dummy = createSignal(None, comp=False)
+        dummy = signal(None, comp=False)
 
         @utils.fn
         def spy1():
@@ -761,29 +761,29 @@ class Test_effect_basic:
         @computed(debug_name="cp_spy1")
         def cp_spy1():
             spy1()
-            dummy()
+            dummy.value
 
         @effect(debug_name="isLogging")
         def _():
-            if isLogging():
+            if isLogging.value:
                 cp_spy1()
 
         assert spy1.calledTimes == 1
 
-        set_dummy(None)
+        dummy.value = None
         assert spy1.calledTimes == 2
 
-        set_isLogging(False)
+        isLogging.value = False
         assert spy1.calledTimes == 2
 
         # at this moment,  cp_spy1 is disconnected from effect(isLogging).
-        set_dummy(None)
+        dummy.value = None
         assert spy1.calledTimes == 2
 
     def test_should_not_trigger_if_condition_not_pass(self):
-        isPass, set_isPass = createSignal(True)
+        isPass = signal(True)
 
-        dummy, set_dummy = createSignal(None, comp=False)
+        dummy = signal(None, comp=False)
 
         @utils.fn
         def spy1():
@@ -796,24 +796,24 @@ class Test_effect_basic:
         @computed(debug_name="cp_spy1")
         def cp_spy1():
             spy1()
-            dummy()
+            dummy.value
 
         @effect
         def _():
             spy_in_effect()
-            if isPass():
+            if isPass.value:
                 cp_spy1()
 
         assert spy1.calledTimes == 1
         assert spy_in_effect.calledTimes == 1
 
-        set_isPass(False)
+        isPass.value = False
         assert spy1.calledTimes == 1
         assert spy_in_effect.calledTimes == 2
 
         # only trigger cp_spy1,
         # but effect not track cp_spy1 this time
-        set_dummy(None)
+        dummy.value = None
         assert spy1.calledTimes == 1
         assert spy_in_effect.calledTimes == 2
 
@@ -839,19 +839,19 @@ class Test_effect_internal:
 
     @utils.mark_todo
     def test_effect_multiple_dep_records(self):
-        num, set_num = createSignal(0)
+        num = signal(0)
 
-        @effect
+        @computed
         def a():
-            return num()
+            return num.value
 
-        @effect
+        @computed
         def a1():
-            return num()
+            return num.value
 
-        @effect
+        @computed
         def b():
-            return a.getValue() + a1.getValue()
+            return a.value + a1.value
 
         assert len(a._get_next_dep_effects()) == 1
         assert len(a._get_pre_dep_effects()) == 0

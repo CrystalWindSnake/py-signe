@@ -1,11 +1,12 @@
 from __future__ import annotations
-from typing import Any, TYPE_CHECKING, Dict, cast
+from typing import Any
 from weakref import WeakValueDictionary, WeakKeyDictionary
-from signe.core.deps import DepManager
+from signe.core.consts import EffectState
+from signe.core.deps import GetterDepManager
 
 
 _ins_map: WeakValueDictionary[InstanceProxy, object] = WeakValueDictionary()
-_proxy_dep_map: WeakKeyDictionary[InstanceProxy, DepManager] = WeakKeyDictionary()
+_proxy_dep_map: WeakKeyDictionary[InstanceProxy, GetterDepManager] = WeakKeyDictionary()
 
 
 def register(
@@ -13,7 +14,7 @@ def register(
     ins,
 ):
     _ins_map[proxy] = ins
-    _proxy_dep_map[proxy] = DepManager(ins)
+    _proxy_dep_map[proxy] = GetterDepManager()
 
 
 def track(proxy: InstanceProxy, key):
@@ -37,7 +38,7 @@ def trigger(proxy: InstanceProxy, key, value):
     assert dep_manager
 
     setattr(ins, key, value)
-    dep_manager.triggered(key, value)
+    dep_manager.triggered(key, value, EffectState.NEED_UPDATE)
 
 
 class InstanceProxy:

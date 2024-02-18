@@ -1,68 +1,111 @@
 from __future__ import annotations
-from typing import Any, Dict, Optional, TypeVar, Set
+from typing import Any, Dict, Optional, Set, TYPE_CHECKING
+from signe.core.idGenerator import IdGen
 
-from signe.core.protocols import CallerProtocol
+
 from .context import get_executor
+from .consts import EffectState
 
 
-class DepManager:
-    def __init__(self, owner) -> None:
-        self._owner = owner
+if TYPE_CHECKING:
+    from .computed import Computed
+    from signe.core.protocols import CallerProtocol
+
+
+class Dep:
+    _id_gen = IdGen("Dep")
+
+    def __init__(self, computed: Optional[Computed] = None) -> None:
+        self.__id = Dep._id_gen.new()
+        self.computed = computed
+        self._deps: Set[CallerProtocol] = set()
+
+    def get_callers(self):
+        return tuple(self._deps)
+
+    def add_caller(self, caller: CallerProtocol):
+        self._deps.add(caller)
+
+    def remove_caller(self, caller: CallerProtocol):
+        self._deps.remove(caller)
+
+    def mark_caller(self, caller: CallerProtocol, key):
+        self._deps.add(caller)
+
+    def __hash__(self) -> int:
+        return hash(self.__id)
+
+    def __eq__(self, __value: object) -> bool:
+        if isinstance(__value, self.__class__):
+            return self.__hash__() == __value.__hash__()
+
+        return False
+
+
+class GetterDepManager:
+    def __init__(self) -> None:
         self._executor = get_executor()
-        self._deps_map: Dict[str, Set[CallerProtocol]] = {}
+        self._deps_map: Dict[str, Dep] = {}
 
-    def get_callers(self, key):
-        if key not in self._deps_map:
-            return tuple()
+    # def get_callers(self, key):
+    #     if key not in self._deps_map:
+    #         return tuple()
 
-        return tuple(self._deps_map[key])
+    #     return tuple(self._deps_map[key])
 
-    def tracked(self, key, value: Optional[Any] = None):
+    def tracked(
+        self, key, value: Optional[Any] = None, computed: Optional[Computed] = None
+    ):
         running_caller = self._executor.get_running_caller()
 
-        if not (running_caller and running_caller.auto_collecting_dep):
+        if not (
+            running_caller
+            and running_caller.auto_collecting_dep
+            and self._executor.should_track
+        ):
             return
 
-        deps = self._deps_map.get(key)
-        if not deps:
-            deps = set()
-            self._deps_map[key] = deps
+        dep = self._deps_map.get(key)
+        if not dep:
+            dep = Dep(computed)
+            self._deps_map[key] = dep
 
-        deps.add(running_caller)
-        running_caller.add_upstream_ref(self._owner)
+        dep.add_caller(running_caller)
+        running_caller.add_upstream_ref(dep)
 
-    def triggered(self, key, value):
+    def triggered(self, key, value, state: EffectState):
         dep = self._deps_map.get(key)
         if not dep:
             return
 
         scheduler = self._executor.get_current_scheduler()
 
-        for caller in dep:
-            if caller.is_effect:
-                pass
-                # set need update
-                caller.update_state("NEED_UPDATE")
-            else:
-                pass
-                # set pending
-                caller.update_pending()
-
-            scheduler.mark_pending(caller)
+        for caller in dep.get_callers():
+            caller.trigger(state)
 
         if not scheduler.is_running:
             scheduler.run()
 
-    def remove_caller(self, target_caller: CallerProtocol):
-        for callers in self._deps_map.values():
-            for caller in tuple(callers):
-                if caller is target_caller:
-                    callers.remove(caller)
+    # def remove_caller(self, target_caller: CallerProtocol):
+    #     for dep in self._deps_map.values():
+    #         for caller in dep.get_callers():
+    #             if caller is target_caller:
+    #                 dep.remove(caller)
 
-    def mark_caller(self, target_caller: CallerProtocol, key):
-        deps = self._deps_map.get(key)
-        if not deps:
-            deps = set()
-            self._deps_map[key] = deps
+    # def mark_caller(self, target_caller: CallerProtocol, key):
+    #     deps = self._deps_map.get(key)
+    #     if not deps:
+    #         deps = set()
+    #         self._deps_map[key] = deps
 
-        deps.add(target_caller)
+    #     deps.add(target_caller)
+
+
+# class CallerDepManager:
+#     def __init__(self, owner) -> None:
+#         self._owner = owner
+#         self._executor = get_executor()
+#         self._upstream_refs: Set[GetterProtocol] = set()
+
+#     def add_upstream_ref(self, getter: GetterProtocol):
+#         self._upstream_refs.add(getter)

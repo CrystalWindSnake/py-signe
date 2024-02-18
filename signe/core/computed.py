@@ -1,12 +1,20 @@
 from __future__ import annotations
 from typing import (
+    Any,
+    Protocol,
     TypeVar,
     Callable,
     Optional,
+    Generic,
+    Union,
+    cast,
+    overload,
 )
-from signe.core.deps import DepManager
+from signe.core.consts import EffectState
+from signe.core.deps import GetterDepManager
+from signe.core.idGenerator import IdGen
 
-from signe.core.protocols import CallerProtocol, IScope
+from signe.core.protocols import IScope
 from signe.core.utils import common_not_eq_value
 
 from .effect import Effect
@@ -15,7 +23,13 @@ from .effect import Effect
 _T = TypeVar("_T")
 
 
-class Computed(Effect[_T]):
+def nothing():
+    pass
+
+
+class Computed(Generic[_T]):
+    _id_gen = IdGen("Computed")
+
     def __init__(
         self,
         fn: Callable[[], _T],
@@ -24,17 +38,29 @@ class Computed(Effect[_T]):
         debug_name: Optional[str] = None,
         scope: Optional[IScope] = None,
     ) -> None:
-        super().__init__(
-            fn,
-            False,
-            None,
-            debug_trigger,
-            priority_level,
-            debug_name,
-            scope=scope,
-        )
+        self.__id = self._id_gen.new()
         self._value = None
-        self._dep_manager = DepManager(self)
+        self._debug_name = debug_name
+
+        def getter():
+            return fn()
+
+        def trigger_fn():
+            self.trigger(EffectState.PENDING)
+
+        self._effect = Effect(
+            getter,
+            trigger_fn,
+            immediate=False,
+            debug_trigger=debug_trigger,
+            scope=scope,
+            state=EffectState.COMPUTED_INIT,
+        )
+        self._dep_manager = GetterDepManager()
+
+    @property
+    def id(self):
+        return self.__id
 
     @property
     def is_effect(self) -> bool:
@@ -44,56 +70,99 @@ class Computed(Effect[_T]):
     def is_signal(self) -> bool:
         return False
 
-    @property
-    def callers(self):
-        return self._dep_manager.get_callers("value")
+    def trigger(self, state: EffectState):
+        state = EffectState.PENDING if state == EffectState.NEED_UPDATE else state
+        self._effect.update_state(state)
+
+        self._dep_manager.triggered("value", self._value, state)
+
+    def confirm_state(self):
+        if self._effect.state <= EffectState.NEED_UPDATE:
+            self._update_value()
 
     @property
     def value(self):
-        if self.state == "INIT" or self.state == "PENDING":
-            self._update_value(mark_change_point=self.state == "PENDING")
+        if self._effect.state <= EffectState.NEED_UPDATE:
+            self._update_value()
 
-        self._dep_manager.tracked("value")
+        self._dep_manager.tracked("value", computed=self)
         return self._value
 
-    def _update_value(self, mark_change_point=True):
-        new_value = self.update()
+    def __call__(self) -> _T:
+        return self.value  # type: ignore
 
-        if common_not_eq_value(self._value, new_value) and mark_change_point:
-            self._dep_manager.triggered("value", new_value)
+    def _update_value(self):
+        new_value = self._effect.update()
+
+        if common_not_eq_value(self._value, new_value):
+            self._dep_manager.triggered("value", new_value, EffectState.NEED_UPDATE)
 
         self._value = new_value
 
-    def mark_caller(self, caller: CallerProtocol):
-        self._dep_manager.mark_caller(caller, "value")
-
-    def remove_caller(self, caller: CallerProtocol):
-        self._dep_manager.remove_caller(caller)
-
-    def confirm_state(self):
-        self._update_value()
-
-    def update_pending(
-        self,
-        is_change_point: bool = True,
-        is_set_pending=True,
-    ):
-        pre_is_pending = self._pending_count > 0
-
-        if is_set_pending:
-            self._pending_count += 1
-        else:
-            self._pending_count -= 1
-
-        cur_is_pending = self._pending_count > 0
-
-        if cur_is_pending:
-            self._state = "PENDING"
-
-        if pre_is_pending ^ cur_is_pending:
-            # pending state changed,nodify getters
-            for caller in self.callers:
-                caller.update_pending(False, cur_is_pending)
-
     def __repr__(self) -> str:
         return f"Computed(id ={self.id}, name={self._debug_name})"
+
+
+class ComputedResultProtocol(Generic[_T], Protocol):
+    @property
+    def value(self) -> _T:
+        ...
+
+    def __call__(
+        self,
+    ) -> _T:
+        ...
+
+
+_T_computed = ComputedResultProtocol[_T]
+_T_computed_setter = Callable[[Callable[[], _T]], _T_computed]
+
+
+@overload
+def computed(
+    fn: None = ...,
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
+) -> _T_computed_setter:
+    ...
+
+
+@overload
+def computed(
+    fn: Callable[[], _T],
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
+) -> _T_computed[_T]:
+    ...
+
+
+def computed(
+    fn: Optional[Callable[[], _T]] = None,
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
+) -> Union[_T_computed_setter, _T_computed[_T]]:
+    kws = {
+        "priority_level": priority_level,
+        "debug_trigger": debug_trigger,
+        "debug_name": debug_name,
+    }
+
+    if fn:
+        scope = scope
+        cp = Computed(fn, **kws, scope=scope)
+        return cast(ComputedResultProtocol[_T], cp)
+    else:
+
+        def wrap_cp(fn: Callable[[], _T]):
+            return computed(fn, **kws, scope=scope)
+
+        return wrap_cp

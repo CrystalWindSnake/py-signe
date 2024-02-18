@@ -7,10 +7,11 @@ from typing import (
     Optional,
     cast,
 )
+from signe.core.consts import EffectState
 from signe.core.idGenerator import IdGen
-from signe.core.protocols import CallerProtocol
+from signe.core.protocols import CallerProtocol, SignalProtocol
 
-from signe.core.deps import DepManager
+from signe.core.deps import GetterDepManager
 from .context import get_executor
 
 
@@ -47,7 +48,7 @@ class Signal(Generic[T]):
         self._value = value
 
         self._executor = get_executor()
-        self._dep_manager = DepManager(self)
+        self._dep_manager = GetterDepManager()
 
         self.option = option or SignalOption[T]()
         self.__debug_name = debug_name
@@ -60,9 +61,9 @@ class Signal(Generic[T]):
     def get_value_without_track(self):
         return self._value
 
-    @property
-    def callers(self):
-        return self._dep_manager.get_callers("value")
+    # @property
+    # def callers(self):
+    #     return self._dep_manager.get_callers("value")
 
     @property
     def is_signal(self) -> bool:
@@ -74,27 +75,25 @@ class Signal(Generic[T]):
 
         return self._value
 
+    def confirm_state(self):
+        pass
+
     @value.setter
     def value(self, value: T):
-        self.__setValue(value)
-
-    def mark_caller(self, caller: CallerProtocol):
-        self._dep_manager.mark_caller(caller, "value")
-
-    def remove_caller(self, caller: CallerProtocol):
-        self._dep_manager.remove_caller(caller)
-
-    def __setValue(self, value: Union[T, Callable[[T], T]]):
         org_value = self._value
-        if isinstance(value, Callable):
-            value = value(org_value)  # type: ignore
 
         if self._option_comp(org_value, value):  # type: ignore
             return
 
         self._value = value
 
-        self._dep_manager.triggered("value", value)
+        self._dep_manager.triggered("value", value, EffectState.NEED_UPDATE)
+
+    # def mark_caller(self, caller: CallerProtocol):
+    #     self._dep_manager.mark_caller(caller, "value")
+
+    # def remove_caller(self, caller: CallerProtocol):
+    #     self._dep_manager.remove_caller(caller)
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -107,3 +106,12 @@ class Signal(Generic[T]):
 
     def __repr__(self) -> str:
         return f"Signal(id= {self.id} , name = {self.__debug_name})"
+
+
+def signal(
+    value: T,
+    comp: Union[TSignalOptionInitComp[T], bool] = None,
+    debug_name: Optional[str] = None,
+):
+    signal = Signal(value, SignalOption(comp), debug_name)
+    return cast(SignalProtocol[T], signal)

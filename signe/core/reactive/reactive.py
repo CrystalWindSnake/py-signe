@@ -22,9 +22,11 @@ def reactive(obj: T) -> T:
 
 
 def reactive(obj: Union[List, Dict, T]) -> Union[List, Dict, T]:
-    from signe.core.reactive import ListProxy, DictProxy, InstanceProxy
+    from . import ListProxy, DictProxy, InstanceProxy
 
-    if isinstance(obj, (str, int, float, date, datetime)):
+    if isinstance(
+        obj, (str, int, float, date, datetime, ListProxy, DictProxy, InstanceProxy)
+    ):
         return obj
 
     if isinstance(obj, Mapping):

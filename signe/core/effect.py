@@ -6,9 +6,12 @@ from typing import (
     Callable,
     Optional,
     TypeVar,
+    Union,
     cast,
     Generic,
+    overload,
 )
+from signe.core.deps import Dep
 
 from signe.core.idGenerator import IdGen
 
@@ -31,6 +34,7 @@ class Effect(Generic[_T]):
     def __init__(
         self,
         fn: Callable[[], _T],
+        trigger_fn: Optional[Callable[[], None]] = None,
         immediate=True,
         on: Optional[List[GetterProtocol]] = None,
         debug_trigger: Optional[Callable] = None,
@@ -38,17 +42,19 @@ class Effect(Generic[_T]):
         debug_name: Optional[str] = None,
         capture_parent_effect=True,
         scope: Optional[IScope] = None,
+        state: Optional[EffectState] = None,
     ) -> None:
         self.__id = self._id_gen.new()
         self._executor = get_executor()
         self.fn = fn
-        self._upstream_refs: Set[GetterProtocol] = set()
+        self._trigger_fn = trigger_fn
+        self._upstream_refs: Set[Dep] = set()
         self._debug_name = debug_name
         self._debug_trigger = debug_trigger
 
         self.auto_collecting_dep = not bool(on)
 
-        self._state: EffectState = "INIT"
+        self._state: EffectState = state or EffectState.STALE
         self._pending_count = 0
         self._cleanups: List[Callable[[], None]] = []
 
@@ -63,9 +69,11 @@ class Effect(Generic[_T]):
 
         if not self.auto_collecting_dep:
             assert on
+
+            self._executor.mark_running_caller(self)
             for getter in on:
-                getter.mark_caller(self)
-                self.add_upstream_ref(getter)
+                getter.value
+            self._executor.reset_running_caller(self)
 
         if immediate:
             self.update()
@@ -82,36 +90,47 @@ class Effect(Generic[_T]):
     def is_effect(self) -> bool:
         return True
 
-    @property
-    def is_pedding(self) -> bool:
-        return self._state == "PENDING"
+    def calc_state(self):
+        if self.state == EffectState.NEED_UPDATE:
+            return
 
-    @property
-    def is_need_update(self) -> bool:
-        return self._state == "NEED_UPDATE"
+        self._state = EffectState.QUERYING
+        self._executor.pause_track()
+
+        for dep in self._upstream_refs:
+            if dep.computed:
+                dep.computed.confirm_state()
+                if self._state >= EffectState.NEED_UPDATE:
+                    break
+
+        if self._state == EffectState.QUERYING:
+            self._state = EffectState.STALE
+
+        self._executor.reset_track()
+
+    def is_need_update(self):
+        return self.state <= EffectState.NEED_UPDATE
 
     def made_sub_effect(self, sub: Effect):
         self._sub_effects.append(sub)
 
-    def add_upstream_ref(self, getter: GetterProtocol):
-        self._upstream_refs.add(getter)
+    def trigger(self, state: EffectState):
+        self._state = state
+
+        if self._trigger_fn:
+            self._trigger_fn()
+
+    def add_upstream_ref(self, dep: Dep):
+        self._upstream_refs.add(dep)
 
     def update_state(self, state: EffectState):
         self._state = state
-
-    def made_upstream_confirm_state(self):
-        for us in self._upstream_refs:
-            if isinstance(us, Effect):
-                us.confirm_state()
-
-    def confirm_state(self):
-        pass
 
     def update(self) -> _T:
         try:
             self._exec_cleanups()
             self._executor.mark_running_caller(self)
-            self._state = "RUNNING"
+            self._state = EffectState.RUNNING
 
             if self.auto_collecting_dep:
                 self._clear_all_deps()
@@ -124,32 +143,16 @@ class Effect(Generic[_T]):
             return result
 
         finally:
-            self._state = "STALE"
+            self._state = EffectState.STALE
             self._executor.reset_running_caller(self)
 
-    def update_pending(self, is_change_point: bool = True, is_set_pending=True):
-        if is_change_point:
-            self._state = "NEED_UPDATE"
-            return
-
-        if is_set_pending:
-            self._pending_count += 1
-        else:
-            self._pending_count -= 1
-
-        cur_is_pending = self._pending_count > 0
-
-        if cur_is_pending:
-            self._state = "PENDING"
-
     def _clear_all_deps(self):
-        for getter in self._upstream_refs:
-            getter.remove_caller(self)
+        for dep in self._upstream_refs:
+            dep.remove_caller(self)
 
         self._upstream_refs.clear()
 
     def dispose(self):
-        # self._pending_deps.clear()
         self._clear_all_deps()
         self._exec_cleanups()
         self._dispose_sub_effects()
@@ -160,10 +163,6 @@ class Effect(Generic[_T]):
 
         self._sub_effects.clear()
 
-    @property
-    def is_pending(self) -> bool:
-        return self.state == "PENDING"
-
     def _exec_cleanups(self):
         for fn in self._cleanups:
             fn()
@@ -173,8 +172,77 @@ class Effect(Generic[_T]):
     def add_cleanup(self, fn: Callable[[], None]):
         self._cleanups.append(fn)
 
+    def __hash__(self) -> int:
+        return hash(self.id)
+
+    def __eq__(self, __value: object) -> bool:
+        if isinstance(__value, self.__class__):
+            return self.__hash__() == __value.__hash__()
+
+        return False
+
     def __call__(self) -> Any:
         return self.update()
 
     def __repr__(self) -> str:
         return f"Effect(id ={self.id}, name={self._debug_name})"
+
+
+_TEffect_Fn = Callable[[Callable[..., _T]], Effect]
+
+
+@overload
+def effect(
+    fn: None = ...,
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
+) -> _TEffect_Fn[None]:
+    ...
+
+
+@overload
+def effect(
+    fn: Callable[[], None],
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
+) -> Effect:
+    ...
+
+
+def effect(
+    fn: Optional[Callable[[], None]] = None,
+    *,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
+) -> Union[_TEffect_Fn[None], Effect]:
+    kws = {
+        "priority_level": priority_level,
+        "debug_trigger": debug_trigger,
+        "debug_name": debug_name,
+    }
+
+    if fn:
+        scope = scope
+
+        executor = get_executor()
+
+        def trigger_fn():
+            if res.is_need_update():
+                executor.get_current_scheduler().mark_update(res)
+
+        res = Effect(fn, trigger_fn, **kws, scope=scope)
+        return res
+    else:
+
+        def wrap(fn: Callable[..., None]):
+            return effect(fn, **kws, scope=scope)
+
+        return wrap

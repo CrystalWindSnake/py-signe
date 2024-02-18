@@ -4,7 +4,7 @@ from signe.core import Effect
 from signe.core.computed import Computed
 from signe.core.scope import IScope
 from signe.core.signal import Signal
-from signe.utils import GetterProtocol, _GLOBAL_SCOPE_MANAGER
+from .protocols import GetterProtocol
 from typing import (
     Any,
     Dict,
@@ -103,7 +103,7 @@ def on(
         else:
             fn(*states)
 
-    scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
+    scope = scope
     return Effect(
         fn=real_fn,
         immediate=not onchanges,

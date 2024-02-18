@@ -1,21 +1,30 @@
 from __future__ import annotations
-from typing import Callable, Iterable, Optional, Protocol, TypeVar, TYPE_CHECKING, Union
+from typing import Callable, Optional, Protocol, TypeVar, TYPE_CHECKING
 
-from signe.core.collections import Stack
-from .consts import EffectState
 
 if TYPE_CHECKING:
+    from signe.core.collections import Stack
+    from signe.core.deps import Dep, GetterDepManager
+    from .consts import EffectState
     from .effect import Effect
     from .runtime import ExecutionScheduler
 
 _T = TypeVar("_T")
 
 
-class GetterProtocol(Protocol[_T]):
-    def mark_caller(self, caller: CallerProtocol):
+class SignalProtocol(Protocol[_T]):
+    @property
+    def value(self) -> _T:
         ...
 
-    def remove_caller(self, caller: CallerProtocol):
+    @value.setter
+    def value(self, value: _T):
+        ...
+
+
+class GetterProtocol(Protocol[_T]):
+    @property
+    def id(self) -> str:
         ...
 
     @property
@@ -23,16 +32,22 @@ class GetterProtocol(Protocol[_T]):
         ...
 
     @property
-    def callers(self) -> Iterable[CallerProtocol]:
+    def value(self) -> _T:
         ...
 
-    @property
-    def value(self) -> _T:
+    def confirm_state(self):
         ...
 
 
 class CallerProtocol(Protocol[_T]):
     auto_collecting_dep: bool
+
+    @property
+    def id(self) -> str:
+        ...
+
+    def trigger(self, state: EffectState):
+        ...
 
     @property
     def is_effect(self) -> bool:
@@ -45,17 +60,7 @@ class CallerProtocol(Protocol[_T]):
     def update(self) -> _T:
         ...
 
-    @property
-    def is_pending(self) -> bool:
-        ...
-
-    def update_state(self, state: EffectState):
-        ...
-
-    def add_upstream_ref(self, getter: GetterProtocol):
-        ...
-
-    def update_pending(self, is_change_point: bool = True, is_set_pending=True):
+    def add_upstream_ref(self, dep: Dep):
         ...
 
     def add_cleanup(self, fn: Callable[[], None]):
@@ -83,4 +88,13 @@ class ExecutorProtocol(Protocol):
         ...
 
     def get_current_scheduler(self) -> ExecutionScheduler:
+        ...
+
+    def pause_track(self):
+        ...
+
+    def reset_track(self):
+        ...
+
+    def should_track(self) -> bool:
         ...

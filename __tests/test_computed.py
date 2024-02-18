@@ -1,7 +1,9 @@
 import _imports
 import pytest
 import utils
-from signe import createSignal, effect, computed, cleanup, createReactive, batch
+
+# from signe import createSignal, effect, computed, cleanup, createReactive, batch
+from signe.core import signal, computed, effect, cleanup, batch
 
 
 class Test_computed_case:
@@ -16,20 +18,20 @@ class Test_computed_case:
         assert not fn_spy.toHaveBeenCalled()
 
         # run
-        value = m1()
+        value = m1.value
         assert value == 1
         assert fn_spy.calledTimes == 1
 
         # not run
-        m1()
+        m1.value
         assert fn_spy.calledTimes == 1
 
     def test_non_call_out_of_effect_with_signal(self):
-        num, set_num = createSignal(1)
+        num = signal(1)
 
         @utils.fn
         def fn_spy():
-            return num()
+            return num.value
 
         m1 = computed(fn_spy)
 
@@ -37,23 +39,23 @@ class Test_computed_case:
         assert not fn_spy.toHaveBeenCalled()
 
         # run
-        value = m1()
+        value = m1.value
         assert value == 1
         assert fn_spy.calledTimes == 1
 
         # not run
-        m1()
+        m1.value
         assert fn_spy.calledTimes == 1
 
-        set_num(2)
+        num.value = 2
         assert fn_spy.calledTimes == 1
 
-        value = m1()
+        value = m1.value
         assert value == 2
         assert fn_spy.calledTimes == 2
 
     def test_no_external_signal_dependence(self):
-        num, set_num = createSignal(1)
+        num = signal(1)
 
         @utils.fn
         def fn_spy():
@@ -63,20 +65,20 @@ class Test_computed_case:
 
         @effect
         def _():
-            m1()
-            num()
+            m1.value
+            num.value
 
         assert fn_spy.calledTimes == 1
 
-        set_num(2)
+        num.value = 2
         assert fn_spy.calledTimes == 1
 
     def test_debug_trigger(self):
-        num, set_num = createSignal(1)
+        num = signal(1)
 
         @utils.fn
         def fn_spy():
-            return num() + 1
+            return num.value + 1
 
         @utils.fn
         def trigger_fn():
@@ -86,23 +88,23 @@ class Test_computed_case:
 
         @effect
         def _():
-            m1()
+            m1.value
 
         assert fn_spy.calledTimes == 1
         assert trigger_fn.calledTimes == 1
 
-        set_num(1)
+        num.value = 1
         assert fn_spy.calledTimes == 1
         assert trigger_fn.calledTimes == 1
 
-        set_num(99)
+        num.value = 99
         assert fn_spy.calledTimes == 2
         assert trigger_fn.calledTimes == 2
 
-        assert m1() == 100
+        assert m1.value == 100
 
     def test_debug_trigger_decorator(self):
-        num, set_num = createSignal(1)
+        num = signal(1)
 
         @utils.fn
         def trigger_fn():
@@ -110,7 +112,7 @@ class Test_computed_case:
 
         @computed(debug_trigger=trigger_fn)
         def m1():
-            return num() + 1
+            return num.value + 1
 
         @effect
         def _():
@@ -118,10 +120,10 @@ class Test_computed_case:
 
         assert trigger_fn.calledTimes == 1
 
-        set_num(1)
+        num.value = 1
         assert trigger_fn.calledTimes == 1
 
-        set_num(99)
+        num.value = 99
         assert trigger_fn.calledTimes == 2
 
         assert m1() == 100

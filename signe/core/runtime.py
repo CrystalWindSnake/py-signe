@@ -1,12 +1,12 @@
 from __future__ import annotations
 from typing import Iterable, List, Dict, TYPE_CHECKING, cast
+
+from signe.core.consts import EffectState
 from .collections import Stack
 from .protocols import CallerProtocol, GetterProtocol
-from signe.core.effect import Effect
 
 if TYPE_CHECKING:
-    from signe.core.signal import Signal
-    from signe.core.computed import Computed
+    from signe.core import Effect, Signal, Computed
 
 
 def _defatul_executor_builder():
@@ -25,6 +25,16 @@ class Executor:
         self._caller_running_stack = Stack[CallerProtocol]()
         self.execution_scheduler_stack = Stack[ExecutionScheduler]()
         self.__defalut_executionScheduler = ExecutionScheduler()
+        self._pause_track_count = 0
+
+    def pause_track(self):
+        self._pause_track_count += 1
+
+    def reset_track(self):
+        self._pause_track_count -= 1
+
+    def should_track(self):
+        return self._pause_track_count <= 0
 
     def set_default_execution_scheduler(self, execution_scheduler: ExecutionScheduler):
         self.__defalut_executionScheduler = execution_scheduler
@@ -47,11 +57,6 @@ class Executor:
 
 class ExecutionScheduler:
     def __init__(self) -> None:
-        self._signal_change_points: Dict[Signal, None] = {}
-
-        self._pending_queue: Dict[CallerProtocol, None] = {}
-
-        self._computed_change_points: Dict[Computed, None] = {}
         self._effect_updates: Dict[Effect, None] = {}
         self.__running = False
 
@@ -59,25 +64,15 @@ class ExecutionScheduler:
     def is_running(self):
         return self.__running
 
-    def mark_signal_change_point(self, signal: Signal):
-        self._signal_change_points[signal] = None
-
-    def mark_computed_change_point(self, computed: Computed):
-        self._computed_change_points[computed] = None
-
-    def mark_pending(self, caller: CallerProtocol):
-        self._pending_queue[caller] = None
-
-    def mark_update(self, caller: CallerProtocol):
-        self._effect_updates[cast(Effect, caller)] = None
+    def mark_update(self, effect: Effect):
+        self._effect_updates[effect] = None
 
     def run(self):
         count = 0
         self.__running = True
 
         try:
-            while self._pending_queue or self._effect_updates:
-                self._run_pending_updates()
+            while self._effect_updates:
                 self._run_effect_updates()
 
                 count += 1
@@ -86,45 +81,13 @@ class ExecutionScheduler:
         finally:
             self.__running = False
 
-    def _run_pending_updates(self):
-        for caller in self._pending_queue:
-            if caller.is_effect and caller.state == "NEED_UPDATE":
-                self.mark_update(caller)
-                continue
-
-            if caller.is_pending:
-                effects = self.__get_pending_or_update_effects(caller)
-                for effect in effects:
-                    self._effect_updates[effect] = None
-
-        self._pending_queue.clear()
-
     def _run_effect_updates(self):
-        for effect in self._effect_updates:
-            if effect.state == "NEED_UPDATE":
+        for effect in tuple(self._effect_updates.keys()):
+            effect.calc_state()
+            if effect.state <= EffectState.NEED_UPDATE:
                 effect.update()
-            else:
-                # Let the upstream node determine the state
-                effect.made_upstream_confirm_state()
 
         self._effect_updates.clear()
-
-    def __get_pending_or_update_effects(
-        self, caller: CallerProtocol
-    ) -> Iterable[Effect]:
-        stack: List[CallerProtocol] = [caller]
-        result: List[Effect] = []
-
-        while len(stack):
-            current = stack.pop()
-
-            if not current.is_effect:
-                stack.extend(cast(GetterProtocol, current).callers)
-
-            else:
-                result.append(cast(Effect, current))
-
-        return result
 
 
 class BatchExecutionScheduler(ExecutionScheduler):
