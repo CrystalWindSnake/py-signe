@@ -76,7 +76,7 @@ class Test_on:
         assert dummy1 == 100
         assert dummy2 == 99
 
-    def test_watch_on_reactive(self):
+    def test_watch_on_reactive_by_list(self):
         dummy = []
 
         data = reactive([1, 2, 3, 4])
@@ -89,6 +89,46 @@ class Test_on:
 
         assert dummy == [1]
         data[0] = 99
+        s.value = 99
+        assert dummy == [1, 99]
+
+    def test_watch_on_reactive_by_dict(self):
+        dummy = []
+
+        data = reactive({"x": 1, "y": 2})
+        s = signal(1)
+
+        @on(lambda: data)
+        def _():
+            dummy.append(data["x"])
+            s.value
+
+        assert dummy == [1]
+        data["x"] = 99
+        s.value = 99
+        assert dummy == [1, 99]
+
+    def test_watch_on_reactive_by_class(self):
+        dummy = []
+
+        class Model:
+            def __init__(self) -> None:
+                self.x = 1
+                self.y = 2
+
+            def inc(self):
+                pass
+
+        data = reactive(Model())
+        s = signal(1)
+
+        @on(lambda: data)
+        def _():
+            dummy.append(data.x)
+            s.value
+
+        assert dummy == [1]
+        data.x = 99
         s.value = 99
         assert dummy == [1, 99]
 

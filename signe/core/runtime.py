@@ -103,7 +103,7 @@ class BatchExecutionScheduler(ExecutionScheduler):
 
     @property
     def should_run(self):
-        return True
+        return False
 
     def run(self):
         pass

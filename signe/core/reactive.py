@@ -25,9 +25,32 @@ P = TypeVar("P")
 _proxy_maps: WeakValueDictionary = WeakValueDictionary()
 
 
-def track_all(obj):
+def track_all_deep(obj):
+    stack = [obj]
+
+    while len(stack):
+        current = stack.pop()
+        if isinstance(current, ListProxy):
+            for value in current:
+                if is_reactive(value):
+                    stack.append(value)
+
+        elif isinstance(current, DictProxy):
+            for value in current.values():
+                if is_reactive(value):
+                    stack.append(value)
+        elif isinstance(current, InstanceProxy):
+            pass
+        else:
+            pass
+
+
+def track_all(obj, deep=False):
     if isinstance(obj, (DictProxy, ListProxy)):
-        iter(obj)
+        if deep:
+            track_all_deep(obj)
+        else:
+            iter(obj)
 
 
 def reactive(obj: T) -> T:

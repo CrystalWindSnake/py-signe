@@ -62,3 +62,39 @@ class Test_base_case:
         assert dummy == [100]
         data[0].inc_agg(99)
         assert dummy == [100, 199]
+
+    def test_isinstance_method_with_args(self):
+        dummy = []
+
+        @dataclass
+        class T:
+            name: str
+            age: int
+
+            def inc_agg(self, num: int):
+                self.age += num
+
+        data = reactive(
+            [
+                T("t1", 10),
+                T("t2", 20),
+                T("t3", 30),
+                T("t4", 40),
+            ]
+        )
+
+        @computed
+        def cp1():
+            return sum(t.age for t in data)
+
+        x = cp1.value
+
+        assert x == 100
+
+        @effect
+        def _():
+            dummy.append(cp1.value)
+
+        assert dummy == [100]
+        data[0].inc_agg(99)
+        assert dummy == [100, 199]

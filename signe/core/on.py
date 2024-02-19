@@ -24,16 +24,17 @@ T = TypeVar("T")
 
 
 class GetterModel(Generic[T]):
-    def __init__(self, fn: Callable[[], T]) -> None:
+    def __init__(self, fn: Callable[[], T], deep=False) -> None:
         assert isinstance(fn, Callable)
         self._fn = fn
+        self._deep = deep
 
     @property
     def value(self):
         obj = self._fn()
         assert is_reactive(obj)
 
-        track_all(obj)
+        track_all(obj, self._deep)
 
         return obj
 
@@ -55,6 +56,7 @@ def on(
     *,
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
+    deep=False,
     scope: Optional[IScope] = None,
 ):
     ...
@@ -66,6 +68,7 @@ def on(
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
+    deep=False,
     scope: Optional[IScope] = None,
 ):
     ...
@@ -77,9 +80,10 @@ def on(
     *,
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
+    deep=False,
     scope: Optional[IScope] = None,
 ):
-    call_kws = {"onchanges": onchanges, "effect_kws": effect_kws}
+    call_kws = {"onchanges": onchanges, "effect_kws": effect_kws, "deep": deep}
 
     if fn is None:
 
@@ -90,9 +94,9 @@ def on(
 
     getters: List[TGetterSignal] = []
     if isinstance(getter, Sequence):
-        getters = [g if is_signal(g) else GetterModel(g) for g in getter]  # type: ignore
+        getters = [g if is_signal(g) else GetterModel(g, deep) for g in getter]  # type: ignore
     else:
-        getters = [getter if is_signal(getter) else GetterModel(getter)]  # type: ignore
+        getters = [getter if is_signal(getter) else GetterModel(getter, deep)]  # type: ignore
 
     targets = getters
 
