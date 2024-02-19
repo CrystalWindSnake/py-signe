@@ -47,12 +47,6 @@ class GetterDepManager:
         self._executor = get_executor()
         self._deps_map: Dict[str, Dep] = {}
 
-    # def get_callers(self, key):
-    #     if key not in self._deps_map:
-    #         return tuple()
-
-    #     return tuple(self._deps_map[key])
-
     def tracked(
         self, key, value: Optional[Any] = None, computed: Optional[Computed] = None
     ):
@@ -85,27 +79,3 @@ class GetterDepManager:
 
         if not scheduler.is_running:
             scheduler.run()
-
-    # def remove_caller(self, target_caller: CallerProtocol):
-    #     for dep in self._deps_map.values():
-    #         for caller in dep.get_callers():
-    #             if caller is target_caller:
-    #                 dep.remove(caller)
-
-    # def mark_caller(self, target_caller: CallerProtocol, key):
-    #     deps = self._deps_map.get(key)
-    #     if not deps:
-    #         deps = set()
-    #         self._deps_map[key] = deps
-
-    #     deps.add(target_caller)
-
-
-# class CallerDepManager:
-#     def __init__(self, owner) -> None:
-#         self._owner = owner
-#         self._executor = get_executor()
-#         self._upstream_refs: Set[GetterProtocol] = set()
-
-#     def add_upstream_ref(self, getter: GetterProtocol):
-#         self._upstream_refs.add(getter)

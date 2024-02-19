@@ -7,6 +7,7 @@ from .on import on
 from .helper import to_value, is_signal
 from .cleanup import cleanup
 from .reactive import reactive
+from .scope import scope
 
 __all__ = [
     "Signal",
@@ -22,4 +23,5 @@ __all__ = [
     "is_signal",
     "cleanup",
     "reactive",
+    "scope",
 ]

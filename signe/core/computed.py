@@ -16,6 +16,7 @@ from signe.core.protocols import ComputedResultProtocol, IScope
 from signe.core.utils import common_not_eq_value
 
 from .effect import Effect
+from .scope import _GLOBAL_SCOPE_MANAGER
 
 
 _T = TypeVar("_T")
@@ -144,7 +145,7 @@ def computed(
     }
 
     if fn:
-        scope = scope
+        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
         cp = Computed(fn, **kws, scope=scope)
         return cast(ComputedResultProtocol[_T], cp)
     else:

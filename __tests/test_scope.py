@@ -1,7 +1,7 @@
 import _imports
 import pytest
 import utils
-from signe.core import signal, effect, computed
+from signe.core import signal, effect, computed, scope
 from signe.core.signal import Signal
 from signe.core.effect import Effect
 from signe.core.computed import Computed
@@ -91,7 +91,7 @@ def test_should_release_with_computed(
     temp_run(3)
     temp_run(4)
     gc.collect()
-    assert effect_del_spy.calledTimes == 4
+    assert effect_del_spy.calledTimes == 8
     assert computed_del_spy.calledTimes == 4
 
 
@@ -152,6 +152,7 @@ def test_nested_scope(signal_del_spy: utils.fn, effect_del_spy: utils.fn):
                     cp_2.value
 
             inner_fn()
+        gc.collect()
 
     assert signal_del_spy.calledTimes == 0
     assert effect_del_spy.calledTimes == 0

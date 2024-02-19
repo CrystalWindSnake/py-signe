@@ -10,15 +10,19 @@ from typing import (
     cast,
     Generic,
     overload,
+    TYPE_CHECKING,
 )
-from signe.core.deps import Dep
+
 
 from signe.core.idGenerator import IdGen
 
 from signe.core.protocols import GetterProtocol, IScope
+from signe.core.scope import _GLOBAL_SCOPE_MANAGER
 from .consts import EffectState
 from .context import get_executor
 
+if TYPE_CHECKING:
+    from signe.core.deps import Dep
 
 _T = TypeVar("_T")
 
@@ -238,7 +242,7 @@ def effect(
     }
 
     if fn:
-        scope = scope
+        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
 
         executor = get_executor()
 

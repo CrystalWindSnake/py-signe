@@ -1,6 +1,9 @@
-from typing import Callable
+from typing import Callable, List, Optional, TYPE_CHECKING
 from signe.core.protocols import ExecutorProtocol
 from functools import lru_cache
+
+if TYPE_CHECKING:
+    from .effect import Effect
 
 _T_executor_builder = Callable[[], ExecutorProtocol]
 
