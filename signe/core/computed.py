@@ -40,7 +40,7 @@ class Computed(Generic[_T]):
         def getter():
             return fn()
 
-        def trigger_fn():
+        def trigger_fn(_):
             self.trigger(EffectState.PENDING)
 
         self._effect = Effect(

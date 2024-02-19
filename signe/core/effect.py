@@ -38,7 +38,7 @@ class Effect(Generic[_T]):
     def __init__(
         self,
         fn: Callable[[], _T],
-        trigger_fn: Optional[Callable[[], None]] = None,
+        trigger_fn: Optional[Callable[[Effect], None]] = None,
         immediate=True,
         on: Optional[List[GetterProtocol]] = None,
         debug_trigger: Optional[Callable] = None,
@@ -128,7 +128,7 @@ class Effect(Generic[_T]):
         self._state = state
 
         if self._trigger_fn:
-            self._trigger_fn()
+            self._trigger_fn(self)
 
         scheduler.reset_scheduling()
 
@@ -261,9 +261,9 @@ def effect(
         scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
         executor = get_executor()
 
-        def trigger_fn():
-            if res.is_need_update():
-                executor.get_current_scheduler().mark_update(res)
+        def trigger_fn(effect: Effect):
+            if effect.is_need_update():
+                executor.get_current_scheduler().mark_update(effect)
 
         res = Effect(fn, trigger_fn, **kws, scope=scope)
         return res

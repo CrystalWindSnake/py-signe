@@ -103,7 +103,7 @@ def on(
     scope = scope
     executor = get_executor()
 
-    def trigger_fn():
+    def trigger_fn(effect: Effect):
         executor.get_current_scheduler().mark_update(effect)
 
     effect = Effect(
