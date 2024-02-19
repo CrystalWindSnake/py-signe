@@ -16,13 +16,13 @@ from signe.core.consts import EffectState
 from signe.core.deps import GetterDepManager
 from signe.core.utils import common_not_eq_value
 from .batch import batch
-from weakref import WeakValueDictionary, WeakSet
+from weakref import WeakValueDictionary
 
 T = TypeVar("T")
 P = TypeVar("P")
 
 
-_proxy_maps: WeakValueDictionary[int, object] = WeakValueDictionary()
+_proxy_maps: WeakValueDictionary = WeakValueDictionary()
 
 
 @overload
