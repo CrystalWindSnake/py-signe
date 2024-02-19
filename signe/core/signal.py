@@ -69,10 +69,6 @@ class Signal(Generic[_T]):
     def get_value_without_track(self):
         return self._value
 
-    # @property
-    # def callers(self):
-    #     return self._dep_manager.get_callers("value")
-
     @property
     def is_signal(self) -> bool:
         return True
@@ -96,12 +92,6 @@ class Signal(Generic[_T]):
         self._value = value
 
         self._dep_manager.triggered("value", value, EffectState.NEED_UPDATE)
-
-    # def mark_caller(self, caller: CallerProtocol):
-    #     self._dep_manager.mark_caller(caller, "value")
-
-    # def remove_caller(self, caller: CallerProtocol):
-    #     self._dep_manager.remove_caller(caller)
 
     def __hash__(self) -> int:
         return hash(self.id)
