@@ -6,7 +6,7 @@ from .batch import batch
 from .on import on
 from .helper import to_value, is_signal
 from .cleanup import cleanup
-from .reactive.reactive import reactive
+from .reactive import reactive
 
 __all__ = [
     "Signal",

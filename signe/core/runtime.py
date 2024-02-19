@@ -82,17 +82,21 @@ class ExecutionScheduler:
             self.__running = False
 
     def _run_effect_updates(self):
-        for effect in tuple(self._effect_updates.keys()):
+        effects = tuple(self._effect_updates.keys())
+        self._effect_updates.clear()
+        for effect in effects:
             effect.calc_state()
             if effect.state <= EffectState.NEED_UPDATE:
                 effect.update()
-
-        self._effect_updates.clear()
 
 
 class BatchExecutionScheduler(ExecutionScheduler):
     def __init__(self) -> None:
         super().__init__()
+
+    @property
+    def is_running(self):
+        return True
 
     def run(self):
         pass

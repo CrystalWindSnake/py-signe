@@ -672,7 +672,9 @@ class Test_effect_basic:
         assert dummy == 1
 
         obj["foo"] = 2
-        assert dummy == 2
+
+        # computed  only be executed if it's called
+        assert dummy == 1
 
     @utils.mark_todo
     def test_scheduler(self):
