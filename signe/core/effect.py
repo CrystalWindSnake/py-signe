@@ -59,7 +59,6 @@ class Effect(Generic[_T]):
         self.auto_collecting_dep = not bool(on)
 
         self._state: EffectState = state or EffectState.STALE
-        self._pending_count = 0
         self._cleanups: List[Callable[[], None]] = []
 
         if scope:
@@ -168,6 +167,8 @@ class Effect(Generic[_T]):
         self._clear_all_deps()
         self._exec_cleanups()
         self._dispose_sub_effects()
+        self.fn = None
+        self._trigger_fn = None
 
     def _dispose_sub_effects(self):
         for sub in self._sub_effects:

@@ -80,6 +80,7 @@ class Computed(Generic[_T]):
     def dispose(self):
         self._effect = None
         self._value = None
+        self._dep_manager.dispose()
 
     @property
     def value(self):

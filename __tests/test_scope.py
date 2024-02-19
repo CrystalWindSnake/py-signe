@@ -2,71 +2,54 @@ import _imports
 import pytest
 import utils
 from signe.core import signal, effect, computed, scope
-from signe.core.signal import Signal
-from signe.core.effect import Effect
-from signe.core.computed import Computed
 import gc
+import weakref
 import logging
 
 logging.basicConfig(level=logging.DEBUG)
 mylogger = logging.getLogger()
 
 
-@pytest.fixture(scope="function")
-def signal_del_spy():
-    @utils.fn
-    def spy():
-        pass
-
-    def __del__(self):
-        spy()
-
-    Signal.__del__ = __del__
-    yield spy
-    delattr(Signal, "__del__")
+def log_refs(obj):
+    refs = gc.get_referrers(obj)
+    mylogger.warning(f"====[{refs}]")
 
 
-@pytest.fixture(scope="function")
-def effect_del_spy():
-    @utils.fn
-    def spy():
-        pass
+class RefChecker:
+    def __init__(self) -> None:
+        @utils.fn
+        def spy(*args):
+            print("spy")
 
-    def __del__(self):
-        spy()
+        self._spy = spy
 
-    Effect.__del__ = __del__
-    yield spy
-    delattr(Effect, "__del__")
+        self._wrefs = []
 
+    def collect(self, obj):
+        self._wrefs.append(weakref.ref(obj, self._spy))
 
-@pytest.fixture(scope="function")
-def computed_del_spy():
-    @utils.fn
-    def spy():
-        pass
-
-    def __del__(self):
-        spy()
-
-    Computed.__del__ = __del__
-    yield spy
-    delattr(Computed, "__del__")
+    @property
+    def calledTimes(self):
+        return self._spy.calledTimes
 
 
-def test_should_release_signal(signal_del_spy: utils.fn):
+def test_should_release_signal():
+    rc = RefChecker()
+
     def fn():
         num = signal(1)
+        rc.collect(num)
 
     fn()
 
     gc.collect()
-    assert signal_del_spy.calledTimes == 1
+    assert rc.calledTimes == 1
 
 
-def test_should_release_with_computed(
-    signal_del_spy: utils.fn, effect_del_spy: utils.fn, computed_del_spy: utils.fn
-):
+def test_should_release_with_computed():
+    computed_rc = RefChecker()
+    effect_rc = RefChecker()
+
     num = signal(1)
 
     def temp_run(x):
@@ -77,27 +60,28 @@ def test_should_release_with_computed(
                 print(x)
                 return num.value
 
+            computed_rc.collect(cp_1)
+
             @effect
-            def _():
+            def eff1():
                 pass
                 cp_1.value
 
-    assert signal_del_spy.calledTimes == 0
-    assert effect_del_spy.calledTimes == 0
-    assert computed_del_spy.calledTimes == 0
+            effect_rc.collect(eff1)
 
     temp_run(1)
     temp_run(2)
     temp_run(3)
     temp_run(4)
     gc.collect()
-    assert effect_del_spy.calledTimes == 8
-    assert computed_del_spy.calledTimes == 4
+    assert computed_rc.calledTimes == 4
+    assert effect_rc.calledTimes == 4
 
 
-def test_should_not_release_computed_call_in_scope(
-    signal_del_spy: utils.fn, effect_del_spy: utils.fn
-):
+def test_should_not_release_computed_call_in_scope():
+    computed_rc = RefChecker()
+    effect_rc = RefChecker()
+
     num = signal(1)
 
     @utils.fn
@@ -106,12 +90,16 @@ def test_should_not_release_computed_call_in_scope(
 
     cp_1 = computed(cp_1_spy)
 
+    computed_rc.collect(cp_1)
+
     def temp_run():
         with scope():
 
             @effect
-            def _():
+            def ef1():
                 cp_1.value
+
+            effect_rc.collect(ef1)
 
     temp_run()
 
@@ -128,11 +116,17 @@ def test_should_not_release_computed_call_in_scope(
 
     # Only the effects defined within the scope should be released, not the computeds defined outside the scope.
     gc.collect()
-    assert effect_del_spy.calledTimes == 1
+    assert computed_rc.calledTimes == 0
+    assert effect_rc.calledTimes == 1
 
 
-def test_nested_scope(signal_del_spy: utils.fn, effect_del_spy: utils.fn):
+def test_nested_scope():
+    computed_rc = RefChecker()
+    signal_rc = RefChecker()
+
     num = signal(1)
+
+    signal_rc.collect(num)
 
     def temp_run(x):
         with scope():
@@ -141,6 +135,8 @@ def test_nested_scope(signal_del_spy: utils.fn, effect_del_spy: utils.fn):
             def cp_1():
                 print(x)
                 return num.value
+
+            computed_rc.collect(cp_1)
 
             def inner_fn():
                 with scope():
@@ -151,11 +147,13 @@ def test_nested_scope(signal_del_spy: utils.fn, effect_del_spy: utils.fn):
 
                     cp_2.value
 
+                    computed_rc.collect(cp_2)
+
             inner_fn()
         gc.collect()
 
-    assert signal_del_spy.calledTimes == 0
-    assert effect_del_spy.calledTimes == 0
+    assert signal_rc.calledTimes == 0
+    assert computed_rc.calledTimes == 0
 
     temp_run(1)
-    assert effect_del_spy.calledTimes == 2
+    assert computed_rc.calledTimes == 2

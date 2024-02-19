@@ -79,3 +79,6 @@ class GetterDepManager:
 
         if scheduler.should_run:
             scheduler.run()
+
+    def dispose(self):
+        self._deps_map.clear()
