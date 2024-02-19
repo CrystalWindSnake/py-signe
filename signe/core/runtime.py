@@ -59,10 +59,17 @@ class ExecutionScheduler:
     def __init__(self) -> None:
         self._effect_updates: Dict[Effect, None] = {}
         self.__running = False
+        self.pause_should_run_stack = 0
 
     @property
-    def is_running(self):
-        return self.__running
+    def should_run(self):
+        return not (self.__running or (self.pause_should_run_stack != 0))
+
+    def pause_scheduling(self):
+        self.pause_should_run_stack += 1
+
+    def reset_scheduling(self):
+        self.pause_should_run_stack -= 1
 
     def mark_update(self, effect: Effect):
         self._effect_updates[effect] = None
@@ -95,7 +102,7 @@ class BatchExecutionScheduler(ExecutionScheduler):
         super().__init__()
 
     @property
-    def is_running(self):
+    def should_run(self):
         return True
 
     def run(self):

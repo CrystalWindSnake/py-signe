@@ -77,5 +77,5 @@ class GetterDepManager:
         for caller in dep.get_callers():
             caller.trigger(state)
 
-        if not scheduler.is_running:
+        if scheduler.should_run:
             scheduler.run()

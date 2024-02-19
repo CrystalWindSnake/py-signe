@@ -123,10 +123,14 @@ class Effect(Generic[_T]):
         self._sub_effects.append(sub)
 
     def trigger(self, state: EffectState):
+        scheduler = self._executor.get_current_scheduler()
+        scheduler.pause_scheduling()
         self._state = state
 
         if self._trigger_fn:
             self._trigger_fn()
+
+        scheduler.reset_scheduling()
 
     def add_upstream_ref(self, dep: Dep):
         self._upstream_refs.add(dep)
