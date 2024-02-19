@@ -4,22 +4,12 @@ from typing import Callable, Optional, Protocol, TypeVar, TYPE_CHECKING
 
 if TYPE_CHECKING:
     from signe.core.collections import Stack
-    from signe.core.deps import Dep, GetterDepManager
+    from signe.core.deps import Dep
     from .consts import EffectState
     from .effect import Effect
     from .runtime import ExecutionScheduler
 
 _T = TypeVar("_T")
-
-
-class SignalProtocol(Protocol[_T]):
-    @property
-    def value(self) -> _T:
-        ...
-
-    @value.setter
-    def value(self, value: _T):
-        ...
 
 
 class GetterProtocol(Protocol[_T]):

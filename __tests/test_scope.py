@@ -1,13 +1,10 @@
 import _imports
 import pytest
 import utils
-from signe import scope, createReactive, batch
-
-from signe.model import signal, effect, computed
+from signe.core import signal, effect, computed
 from signe.core.signal import Signal
 from signe.core.effect import Effect
 from signe.core.computed import Computed
-from signe.core.scope import Scope
 import gc
 import logging
 

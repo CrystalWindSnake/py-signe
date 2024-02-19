@@ -4,7 +4,6 @@ from signe.core import Effect
 from signe.core.computed import Computed
 from signe.core.scope import IScope
 from signe.core.signal import Signal
-from .protocols import GetterProtocol
 from typing import (
     Any,
     Dict,
@@ -15,12 +14,17 @@ from typing import (
     Union,
     overload,
     Optional,
+    TYPE_CHECKING,
 )
+
+if TYPE_CHECKING:
+    from .signal import SignalResultProtocol
+    from .computed import ComputedResultProtocol
 
 
 T = TypeVar("T")
 
-_T_Getter = Union[Signal, Computed]
+_T_Ref = Union[SignalResultProtocol, ComputedResultProtocol]
 
 
 @dataclass(frozen=True)
@@ -35,7 +39,7 @@ def _get_func_args_count(fn):
 
 @overload
 def on(
-    getter: Union[GetterProtocol, Sequence[GetterProtocol]],
+    getter: Union[_T_Ref, Sequence[_T_Ref]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -47,7 +51,7 @@ def on(
 
 @overload
 def on(
-    getter: Union[GetterProtocol, Sequence[GetterProtocol]],
+    getter: Union[_T_Ref, Sequence[_T_Ref]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -57,7 +61,7 @@ def on(
 
 
 def on(
-    getter: Union[GetterProtocol, Sequence[GetterProtocol]],
+    getter: Union[_T_Ref, Sequence[_T_Ref]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -73,7 +77,7 @@ def on(
 
         return wrap_cp
 
-    getters: List[GetterProtocol] = []
+    getters: List[_T_Ref] = []
     if isinstance(getter, Sequence):
         getters = getter  # type: ignore
     else:

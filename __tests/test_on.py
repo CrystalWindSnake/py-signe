@@ -1,5 +1,4 @@
-from typing import List
-from signe.model import signal, on, computed, batch
+from signe.core import signal, on, computed, batch
 import utils
 
 

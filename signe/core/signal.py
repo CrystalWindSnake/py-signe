@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import (
+    Protocol,
     TypeVar,
     Generic,
     Callable,
@@ -9,13 +10,12 @@ from typing import (
 )
 from signe.core.consts import EffectState
 from signe.core.idGenerator import IdGen
-from signe.core.protocols import CallerProtocol, SignalProtocol
 
 from signe.core.deps import GetterDepManager
 from .context import get_executor
 
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 TComp = TypeVar("TComp")
 
@@ -23,10 +23,10 @@ TSignalOptionComp = Callable[[TComp, TComp], bool]
 TSignalOptionInitComp = Optional[Union[bool, TSignalOptionComp[TComp]]]
 
 
-class SignalOption(Generic[T]):
+class SignalOption(Generic[_T]):
     __slots__ = ("comp",)
 
-    def __init__(self, comp: TSignalOptionInitComp[T] = None) -> None:
+    def __init__(self, comp: TSignalOptionInitComp[_T] = None) -> None:
         if comp is None:
             comp = lambda old, new: old == new
         elif comp == False:
@@ -34,13 +34,13 @@ class SignalOption(Generic[T]):
         self.comp: TSignalOptionComp = comp  # type: ignore
 
 
-class Signal(Generic[T]):
+class Signal(Generic[_T]):
     _id_gen = IdGen("Signal")
 
     def __init__(
         self,
-        value: T,
-        option: Optional[SignalOption[T]] = None,
+        value: _T,
+        option: Optional[SignalOption[_T]] = None,
         debug_name: Optional[str] = None,
     ) -> None:
         super().__init__()
@@ -50,9 +50,9 @@ class Signal(Generic[T]):
         self._executor = get_executor()
         self._dep_manager = GetterDepManager()
 
-        self.option = option or SignalOption[T]()
+        self.option = option or SignalOption[_T]()
         self.__debug_name = debug_name
-        self._option_comp = cast(Callable[[T, T], bool], self.option.comp)
+        self._option_comp = cast(Callable[[_T, _T], bool], self.option.comp)
 
     @property
     def id(self):
@@ -79,7 +79,7 @@ class Signal(Generic[T]):
         pass
 
     @value.setter
-    def value(self, value: T):
+    def value(self, value: _T):
         org_value = self._value
 
         if self._option_comp(org_value, value):  # type: ignore
@@ -108,10 +108,20 @@ class Signal(Generic[T]):
         return f"Signal(id= {self.id} , name = {self.__debug_name})"
 
 
+class SignalResultProtocol(Protocol[_T]):
+    @property
+    def value(self) -> _T:
+        ...
+
+    @value.setter
+    def value(self, value: _T):
+        ...
+
+
 def signal(
-    value: T,
-    comp: Union[TSignalOptionInitComp[T], bool] = None,
+    value: _T,
+    comp: Union[TSignalOptionInitComp[_T], bool] = None,
     debug_name: Optional[str] = None,
 ):
     signal = Signal(value, SignalOption(comp), debug_name)
-    return cast(SignalProtocol[T], signal)
+    return cast(SignalResultProtocol[_T], signal)
