@@ -255,8 +255,10 @@ def effect(
     }
 
     if fn:
-        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
+        if isinstance(fn, Effect):
+            fn = fn._fn
 
+        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
         executor = get_executor()
 
         def trigger_fn():

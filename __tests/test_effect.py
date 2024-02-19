@@ -205,7 +205,6 @@ class Test_effect_basic:
         assert dummy == 2
         assert lenSpy.calledTimes == 2
 
-    # @utils.mark_todo
     def test_observe_func_valued_prop(self):
         def oldFunc():
             pass
@@ -272,7 +271,6 @@ class Test_effect_basic:
         assert getDummy == "value"
         assert hasDummy == True
 
-    # @utils.mark_todo
     def test_not_observe_raw(self):
         dummy = None
         obj = reactive({"prop": "value"})
@@ -286,7 +284,6 @@ class Test_effect_basic:
         obj["prop"] = "new value"
         assert dummy == "value"
 
-    # @utils.mark_todo
     def test_not_triggered_by_raw(self):
         dummy = None
         obj = reactive({"prop": "value"})
@@ -409,7 +406,6 @@ class Test_effect_basic:
         assert dummy == "world"
         assert conditionalSpy.calledTimes == 3
 
-    # @utils.mark_todo
     def test_discover_new_branches_when_running_manually(self):
         dummy = None
         run = False
@@ -551,13 +547,12 @@ class Test_effect_basic:
         assert fx1Spy.calledTimes == 0
         assert fx2Spy.calledTimes == 1
 
-    @utils.mark_todo
     def test_should_not_double_wrap_if_the_passed_function_is_a_effect(self):
         runner = effect(lambda: ())  # type: ignore
         otherRunner = effect(runner)
 
         assert runner is not otherRunner
-        assert runner.effect.fn is otherRunner.effect.fn
+        assert runner._fn is otherRunner._fn
 
     def test_should_not_run_multiple_times_for_a_single_mutation(self):
         dummy = None
@@ -688,7 +683,6 @@ class Test_effect_basic:
     def test_events_onTrigger(self):
         assert False, "todo"
 
-    # @utils.mark_todo
     def test_stop(self):
         dummy = None
         obj = reactive({"prop": 1})
