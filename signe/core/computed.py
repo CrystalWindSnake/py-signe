@@ -1,7 +1,5 @@
 from __future__ import annotations
 from typing import (
-    Any,
-    Protocol,
     TypeVar,
     Callable,
     Optional,
@@ -14,7 +12,7 @@ from signe.core.consts import EffectState
 from signe.core.deps import GetterDepManager
 from signe.core.idGenerator import IdGen
 
-from signe.core.protocols import IScope
+from signe.core.protocols import ComputedResultProtocol, IScope
 from signe.core.utils import common_not_eq_value
 
 from .effect import Effect
@@ -101,17 +99,6 @@ class Computed(Generic[_T]):
 
     def __repr__(self) -> str:
         return f"Computed(id ={self.id}, name={self._debug_name})"
-
-
-class ComputedResultProtocol(Generic[_T], Protocol):
-    @property
-    def value(self) -> _T:
-        ...
-
-    def __call__(
-        self,
-    ) -> _T:
-        ...
 
 
 _T_computed = ComputedResultProtocol[_T]

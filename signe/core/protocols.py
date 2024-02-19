@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Callable, Optional, Protocol, TypeVar, TYPE_CHECKING
+from typing import Callable, Generic, Optional, Protocol, TypeVar, TYPE_CHECKING
 
 
 if TYPE_CHECKING:
@@ -87,4 +87,25 @@ class ExecutorProtocol(Protocol):
         ...
 
     def should_track(self) -> bool:
+        ...
+
+
+class SignalResultProtocol(Protocol[_T]):
+    @property
+    def value(self) -> _T:
+        ...
+
+    @value.setter
+    def value(self, value: _T):
+        ...
+
+
+class ComputedResultProtocol(Generic[_T], Protocol):
+    @property
+    def value(self) -> _T:
+        ...
+
+    def __call__(
+        self,
+    ) -> _T:
         ...

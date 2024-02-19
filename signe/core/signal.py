@@ -1,6 +1,5 @@
 from __future__ import annotations
 from typing import (
-    Protocol,
     TypeVar,
     Generic,
     Callable,
@@ -12,6 +11,7 @@ from signe.core.consts import EffectState
 from signe.core.idGenerator import IdGen
 
 from signe.core.deps import GetterDepManager
+from signe.core.protocols import SignalResultProtocol
 from .context import get_executor
 
 
@@ -106,16 +106,6 @@ class Signal(Generic[_T]):
 
     def __repr__(self) -> str:
         return f"Signal(id= {self.id} , name = {self.__debug_name})"
-
-
-class SignalResultProtocol(Protocol[_T]):
-    @property
-    def value(self) -> _T:
-        ...
-
-    @value.setter
-    def value(self, value: _T):
-        ...
 
 
 def signal(

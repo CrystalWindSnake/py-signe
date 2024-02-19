@@ -1,9 +1,7 @@
 from dataclasses import dataclass
 import inspect
 from signe.core import Effect
-from signe.core.computed import Computed
 from signe.core.scope import IScope
-from signe.core.signal import Signal
 from typing import (
     Any,
     Dict,
@@ -14,13 +12,9 @@ from typing import (
     Union,
     overload,
     Optional,
-    TYPE_CHECKING,
 )
 
-if TYPE_CHECKING:
-    from .signal import SignalResultProtocol
-    from .computed import ComputedResultProtocol
-
+from .protocols import SignalResultProtocol, ComputedResultProtocol
 
 T = TypeVar("T")
 
