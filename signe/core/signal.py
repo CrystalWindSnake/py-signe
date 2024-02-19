@@ -6,6 +6,7 @@ from typing import (
     Union,
     Optional,
     cast,
+    overload,
 )
 from signe.core.consts import EffectState
 from signe.core.idGenerator import IdGen
@@ -13,7 +14,7 @@ from signe.core.idGenerator import IdGen
 from signe.core.deps import GetterDepManager
 from signe.core.protocols import SignalResultProtocol
 from .context import get_executor
-
+from .types import TMaybeSignal
 
 _T = TypeVar("_T")
 
@@ -106,10 +107,39 @@ class Signal(Generic[_T]):
         return f"Signal(id= {self.id} , name = {self.__debug_name})"
 
 
+@overload
+def signal(
+    value: SignalResultProtocol[_T],
+    comp: Union[TSignalOptionInitComp[_T], bool] = None,
+    debug_name: Optional[str] = None,
+) -> SignalResultProtocol[_T]:
+    ...
+
+
+@overload
 def signal(
     value: _T,
     comp: Union[TSignalOptionInitComp[_T], bool] = None,
     debug_name: Optional[str] = None,
-):
+) -> SignalResultProtocol[_T]:
+    ...
+
+
+@overload
+def signal(
+    value: TMaybeSignal[_T],
+    comp: Union[TSignalOptionInitComp[_T], bool] = None,
+    debug_name: Optional[str] = None,
+) -> SignalResultProtocol[_T]:
+    ...
+
+
+def signal(
+    value: Union[_T, SignalResultProtocol[_T], TMaybeSignal[_T]],
+    comp: Union[TSignalOptionInitComp[_T], bool] = None,
+    debug_name: Optional[str] = None,
+) -> SignalResultProtocol[_T]:
+    if isinstance(value, Signal):
+        return value
     signal = Signal(value, SignalOption(comp), debug_name)
     return cast(SignalResultProtocol[_T], signal)

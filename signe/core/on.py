@@ -15,11 +15,9 @@ from typing import (
     Optional,
 )
 
-from .protocols import SignalResultProtocol, ComputedResultProtocol
+from .types import TGetterSignal
 
 T = TypeVar("T")
-
-_T_Ref = Union[SignalResultProtocol, ComputedResultProtocol]
 
 
 @dataclass(frozen=True)
@@ -34,7 +32,7 @@ def _get_func_args_count(fn):
 
 @overload
 def on(
-    getter: Union[_T_Ref, Sequence[_T_Ref]],
+    getter: Union[TGetterSignal, Sequence[TGetterSignal]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -46,7 +44,7 @@ def on(
 
 @overload
 def on(
-    getter: Union[_T_Ref, Sequence[_T_Ref]],
+    getter: Union[TGetterSignal, Sequence[TGetterSignal]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -56,7 +54,7 @@ def on(
 
 
 def on(
-    getter: Union[_T_Ref, Sequence[_T_Ref]],
+    getter: Union[TGetterSignal, Sequence[TGetterSignal]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -72,7 +70,7 @@ def on(
 
         return wrap_cp
 
-    getters: List[_T_Ref] = []
+    getters: List[TGetterSignal] = []
     if isinstance(getter, Sequence):
         getters = getter  # type: ignore
     else:
