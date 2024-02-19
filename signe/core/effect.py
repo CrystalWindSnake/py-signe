@@ -1,13 +1,30 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Any, TypeVar, Set, Callable, Optional, Generic, cast
+from typing import (
+    Any,
+    List,
+    Set,
+    Callable,
+    Optional,
+    TypeVar,
+    Union,
+    cast,
+    Generic,
+    overload,
+    TYPE_CHECKING,
+)
+
+
+from signe.core.idGenerator import IdGen
+
+from signe.core.protocols import GetterProtocol, IScope
+from signe.core.scope import _GLOBAL_SCOPE_MANAGER
 from .consts import EffectState
-from itertools import chain
+from .context import get_executor
 
 if TYPE_CHECKING:
-    from .runtime import Executor
-    from .signal import Signal
+    from signe.core.deps import Dep
 
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 
 class EffectOption:
@@ -15,184 +32,166 @@ class EffectOption:
         self.level = level
 
 
-class Effect(Generic[T]):
-    _g_id = 0
+class Effect(Generic[_T]):
+    _id_gen = IdGen("Effect")
 
     def __init__(
         self,
-        executor: Executor,
-        fn: Callable[[], T],
+        fn: Callable[[], _T],
+        trigger_fn: Optional[Callable[[], None]] = None,
+        immediate=True,
+        on: Optional[List[GetterProtocol]] = None,
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
         capture_parent_effect=True,
+        scope: Optional[IScope] = None,
+        state: Optional[EffectState] = None,
     ) -> None:
-        Effect._g_id += 1
-        self.id = Effect._g_id
-        self.__executor = executor
-        self.value: Optional[T] = None
-        self.fn = fn
-        self._age = 0
-        self._state = EffectState.CURRENT
-        self.__dep_signals: Set[Signal] = set()
-        self.__priority_level = priority_level
-        self.__debug_name = debug_name
-
-        """
-        When one effect is triggered by another effect, 
-        the former belongs to a pre dependency 
-        and the latter belongs to a next dependency.
-
-        @effect
-        def a():
-            return 1
-
-        @effect
-        def b():
-            return a()
-
-        a is pre dep effect
-        b is next dep effect
-
-        b should be push to next dep of a
-        a should be push to pre dep of b
-        """
-        self.__pre_dep_effects: Set[Effect] = set()
-        self.__next_dep_effects: Set[Effect] = set()
-
-        self._sub_effects: list[Effect] = []
-
-        self._cleanup_callbacks: list[Callable] = []
-
+        self.__id = self._id_gen.new()
+        self._executor = get_executor()
+        self._active = True
+        self._fn = fn
+        self._trigger_fn = trigger_fn
+        self._upstream_refs: Set[Dep] = set()
+        self._debug_name = debug_name
         self._debug_trigger = debug_trigger
 
-        """
-        This method must be executed before Method __run_fn. 
-        If an effect object is created 
-        during the execution of a parent effect object, 
-        it is considered as its child object.
-        """
-        if capture_parent_effect:
-            self.__try_add_self_to_parent_sub_effect()
+        self.auto_collecting_dep = not bool(on)
 
-        self.__run_fn()
-        self.__init_no_deps = (
-            len(self.__pre_dep_effects)
-            + len(self.__next_dep_effects)
-            + len(self.__dep_signals)
-        ) <= 0
+        self._state: EffectState = state or EffectState.STALE
+        self._cleanups: List[Callable[[], None]] = []
 
-    def __get_all_dep_effects(self):
-        return chain(self.__pre_dep_effects, self.__next_dep_effects)
+        if scope:
+            scope.add_disposable(self)
 
-    def __try_add_self_to_parent_sub_effect(self):
-        current_effect = self.__executor.effect_running_stack.get_current()
+        self._sub_effects: List[Effect] = []
 
-        if current_effect is not None and current_effect is not self:
-            current_effect._add_sub_effect(self)
+        running_caller = self._executor.get_running_caller()
+        if running_caller and running_caller.is_effect:
+            cast(Effect, running_caller).made_sub_effect(self)
+
+        if not self.auto_collecting_dep:
+            assert on
+
+            self._executor.mark_running_caller(self)
+            self.auto_collecting_dep = True
+
+            for getter in on:
+                getter.value
+
+            self.auto_collecting_dep = False
+            self._executor.reset_running_caller(self)
+
+        if immediate:
+            self.update()
 
     @property
-    def priority_level(self):
-        return self.__priority_level
+    def id(self):
+        return self.__id
 
-    def _get_pre_dep_effects(self):
-        return list(self.__pre_dep_effects)
+    @property
+    def state(self):
+        return self._state
 
-    def _get_next_dep_effects(self):
-        return list(self.__next_dep_effects)
+    @property
+    def is_effect(self) -> bool:
+        return True
 
-    def _add_sub_effect(self, effect: Effect):
-        self._sub_effects.append(effect)
-
-    def add_dep_signal(self, signal: Signal):
-        self.__dep_signals.add(signal)
-
-    def add_pre_dep_effect(self, effect: Effect):
-        self.__pre_dep_effects.add(effect)
-
-    def add_next_dep_effect(self, effect: Effect):
-        self.__next_dep_effects.add(effect)
-
-    def getValue(self):
-        if not self.__init_no_deps:
-            tick = self.__executor.current_execution_scheduler.tick
-            current_effect = self.__executor.effect_running_stack.get_current()
-
-            if current_effect:
-                if self._age == tick:
-                    if self._state == EffectState.RUNNING:
-                        raise Exception("circular running")
-
-                    self.update()
-
-                self.add_next_dep_effect(current_effect)
-                current_effect.add_pre_dep_effect(self)
-
-        return cast(T, self.value)
-
-    def _push_scheduler(self):
-        tick = self.__executor.current_execution_scheduler.tick
-
-        if self._age >= tick:
+    def calc_state(self):
+        if self.state == EffectState.NEED_UPDATE:
             return
 
-        self._age = tick
-        self._state = EffectState.STALE
+        self._state = EffectState.QUERYING
+        self._executor.pause_track()
 
-        self.__executor.current_execution_scheduler.add_effect(self)
+        for dep in self._upstream_refs:
+            if dep.computed:
+                dep.computed.confirm_state()
+                if self._state >= EffectState.NEED_UPDATE:
+                    break
 
-        for effect in self.__next_dep_effects:
-            effect._push_scheduler()
+        if self._state == EffectState.QUERYING:
+            self._state = EffectState.STALE
 
-    def __call__(self, *args: Any, **kwds: Any) -> Any:
-        return self.getValue()
+        self._executor.reset_track()
 
-    def update(self):
-        if self._state != EffectState.STALE:
-            return
+    def is_need_update(self):
+        return self.state <= EffectState.NEED_UPDATE
 
-        self.__run_fn()
+    def made_sub_effect(self, sub: Effect):
+        self._sub_effects.append(sub)
 
-    def add_cleanup_callback(self, callback: Callable):
-        self._cleanup_callbacks.append(callback)
+    def trigger(self, state: EffectState):
+        scheduler = self._executor.get_current_scheduler()
+        scheduler.pause_scheduling()
+        self._state = state
 
-    def __run_fn(self):
-        self._cleanup_source_before_update()
+        if self._trigger_fn:
+            self._trigger_fn()
+
+        scheduler.reset_scheduling()
+
+    def add_upstream_ref(self, dep: Dep):
+        self._upstream_refs.add(dep)
+
+    def update_state(self, state: EffectState):
+        self._state = state
+
+    def update(self) -> _T:
+        if not self._active:
+            return self._fn()
 
         try:
-            self.__executor.effect_running_stack.set_current(self)
-
+            self._exec_cleanups()
+            self._executor.mark_running_caller(self)
             self._state = EffectState.RUNNING
 
-            self.cleanup_deps()
+            if self.auto_collecting_dep:
+                self._clear_all_deps()
 
-            self.value = self.fn()
+            self._dispose_sub_effects()
+            result = self._fn()
             if self._debug_trigger:
                 self._debug_trigger()
 
-            self._state = EffectState.CURRENT
+            return result
 
         finally:
-            self.__executor.effect_running_stack.reset_current()
+            self._state = EffectState.STALE
+            self._executor.reset_running_caller(self)
 
-    def cleanup_dep_effect(self, effect: Effect):
-        if effect in self.__pre_dep_effects:
-            self.__pre_dep_effects.remove(effect)
+    def stop(self):
+        self._clear_all_deps()
+        self._active = False
 
-        if effect in self.__next_dep_effects:
-            self.__next_dep_effects.remove(effect)
+    def _clear_all_deps(self):
+        for dep in self._upstream_refs:
+            dep.remove_caller(self)
 
-    def cleanup_deps(self):
-        for s in self.__dep_signals:
-            s.cleanup_dep_effect(self)
+        self._upstream_refs.clear()
 
-        self.__dep_signals.clear()
+    def dispose(self):
+        self._clear_all_deps()
+        self._exec_cleanups()
+        self._dispose_sub_effects()
+        del self._fn
+        del self._trigger_fn
 
-        for effect in self.__get_all_dep_effects():
-            effect.cleanup_dep_effect(self)
+    def _dispose_sub_effects(self):
+        for sub in self._sub_effects:
+            sub.dispose()
 
-        self.__pre_dep_effects.clear()
-        self.__next_dep_effects.clear()
+        self._sub_effects.clear()
+
+    def _exec_cleanups(self):
+        for fn in self._cleanups:
+            fn()
+
+        self._cleanups.clear()
+
+    def add_cleanup(self, fn: Callable[[], None]):
+        self._cleanups.append(fn)
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -203,27 +202,78 @@ class Effect(Generic[T]):
 
         return False
 
-    def _cleanup_source_before_update(self):
-        self._cleanup_sub_effects()
-
-        for cb in self._cleanup_callbacks:
-            cb()
-
-        self._cleanup_callbacks.clear()
-
-    def _cleanup_sub_effects(self):
-        for effect in self._sub_effects:
-            effect.dispose()
-
-        self._sub_effects.clear()
-
-    def dispose(self):
-        self._cleanup_sub_effects()
-        self.cleanup_deps()
-        # self.fn = None
-
-    def _reset_age(self):
-        self._age = 0
+    def __call__(self) -> Any:
+        return self.update()
 
     def __repr__(self) -> str:
-        return f"Effect(id ={self.id}, name={self.__debug_name})"
+        return f"Effect(id ={self.id}, name={self._debug_name})"
+
+
+_TEffect_Fn = Callable[[Callable[..., _T]], Effect]
+
+
+@overload
+def effect(
+    fn: None = ...,
+    *,
+    immediate=True,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
+) -> _TEffect_Fn[None]:
+    ...
+
+
+@overload
+def effect(
+    fn: Callable[[], None],
+    *,
+    immediate=True,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
+) -> Effect:
+    ...
+
+
+def effect(
+    fn: Optional[Callable[[], None]] = None,
+    *,
+    immediate=True,
+    priority_level=1,
+    debug_trigger: Optional[Callable] = None,
+    debug_name: Optional[str] = None,
+    scope: Optional[IScope] = None,
+) -> Union[_TEffect_Fn[None], Effect]:
+    kws = {
+        "priority_level": priority_level,
+        "debug_trigger": debug_trigger,
+        "debug_name": debug_name,
+        "immediate": immediate,
+    }
+
+    if fn:
+        if isinstance(fn, Effect):
+            fn = fn._fn
+
+        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
+        executor = get_executor()
+
+        def trigger_fn():
+            if res.is_need_update():
+                executor.get_current_scheduler().mark_update(res)
+
+        res = Effect(fn, trigger_fn, **kws, scope=scope)
+        return res
+    else:
+
+        def wrap(fn: Callable[..., None]):
+            return effect(fn, **kws, scope=scope)
+
+        return wrap
+
+
+def stop(effect: Effect):
+    effect.stop()

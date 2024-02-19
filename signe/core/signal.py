@@ -1,21 +1,22 @@
 from __future__ import annotations
 from typing import (
-    TYPE_CHECKING,
     TypeVar,
     Generic,
     Callable,
-    Set,
     Union,
     Optional,
     cast,
+    overload,
 )
+from signe.core.consts import EffectState
+from signe.core.idGenerator import IdGen
 
+from signe.core.deps import GetterDepManager
+from signe.core.protocols import SignalResultProtocol
+from .context import get_executor
+from .types import TMaybeSignal
 
-if TYPE_CHECKING:
-    from .runtime import Executor
-    from .effect import Effect
-
-T = TypeVar("T")
+_T = TypeVar("_T")
 
 TComp = TypeVar("TComp")
 
@@ -23,71 +24,75 @@ TSignalOptionComp = Callable[[TComp, TComp], bool]
 TSignalOptionInitComp = Optional[Union[bool, TSignalOptionComp[TComp]]]
 
 
-class SignalOption(Generic[T]):
+def _eq_base_comp(old, new):
+    return old == new
+
+
+def _always_false_comp(old, new):
+    return False
+
+
+class SignalOption(Generic[_T]):
     __slots__ = ("comp",)
 
-    def __init__(self, comp: TSignalOptionInitComp[T] = None) -> None:
+    def __init__(self, comp: TSignalOptionInitComp[_T] = None) -> None:
         if comp is None:
-            comp = lambda old, new: old == new
-        elif comp == False:
-            comp = lambda old, new: False
+            comp = _eq_base_comp
+        elif comp is False:
+            comp = _always_false_comp
         self.comp: TSignalOptionComp = comp  # type: ignore
 
 
-class Signal(Generic[T]):
-    _g_id = 0
+class Signal(Generic[_T]):
+    _id_gen = IdGen("Signal")
 
     def __init__(
         self,
-        executor: Executor,
-        value: T,
-        option: Optional[SignalOption[T]] = None,
+        value: _T,
+        option: Optional[SignalOption[_T]] = None,
         debug_name: Optional[str] = None,
     ) -> None:
-        Signal._g_id += 1
-        self.id = Signal._g_id
-        self.__executor = executor
-        self.value = value
-        self.__dep_effects: Set[Effect] = set()
-        self.option = option or SignalOption[T]()
+        super().__init__()
+        self.__id = Signal._id_gen.new()
+        self._value = value
+
+        self._executor = get_executor()
+        self._dep_manager = GetterDepManager()
+
+        self.option = option or SignalOption[_T]()
         self.__debug_name = debug_name
+        self._option_comp = cast(Callable[[_T, _T], bool], self.option.comp)
 
-        self._option_comp = cast(Callable[[T, T], bool], self.option.comp)
+    @property
+    def id(self):
+        return self.__id
 
-    def getValue(self) -> T:
-        current_effect = self.__executor.effect_running_stack.get_current()
+    def get_value_without_track(self):
+        return self._value
 
-        if current_effect:
-            self.__dep_effects.add(current_effect)
-            current_effect.add_dep_signal(self)
+    @property
+    def is_signal(self) -> bool:
+        return True
 
-        return self.value  # type: ignore
+    @property
+    def value(self):
+        self._dep_manager.tracked("value")
 
-    def setValue(self, value: Union[T, Callable[[T], T]]) -> T:
-        if isinstance(value, Callable):
-            value = value(self.value)  # type: ignore
+        return self._value
 
-        if self._option_comp(self.value, value):  # type: ignore
-            return self.value  # type: ignore
+    def confirm_state(self):
+        pass
 
-        if len(self.__dep_effects) <= 0:
-            self.value = value
-            return self.value  # type: ignore
+    @value.setter
+    def value(self, value: _T):
+        org_value = self._value
 
-        self.value = value
-        scheduler = self.__executor.current_execution_scheduler.add_signal(self)
+        if self._option_comp(org_value, value):  # type: ignore
+            return
 
-        if not self.__executor.is_running:
-            scheduler.run()
+        self._value = value
 
-        return value  # type: ignore
-
-    def update(self):
-        for sub in self.__dep_effects:
-            sub._push_scheduler()
-
-    def cleanup_dep_effect(self, effect: Effect):
-        self.__dep_effects.remove(effect)
+        self._dep_manager.triggered("value", value, EffectState.NEED_UPDATE)
 
     def __hash__(self) -> int:
         return hash(self.id)
@@ -100,3 +105,41 @@ class Signal(Generic[T]):
 
     def __repr__(self) -> str:
         return f"Signal(id= {self.id} , name = {self.__debug_name})"
+
+
+@overload
+def signal(
+    value: SignalResultProtocol[_T],
+    comp: Union[TSignalOptionInitComp[_T], bool] = None,
+    debug_name: Optional[str] = None,
+) -> SignalResultProtocol[_T]:
+    ...
+
+
+@overload
+def signal(
+    value: _T,
+    comp: Union[TSignalOptionInitComp[_T], bool] = None,
+    debug_name: Optional[str] = None,
+) -> SignalResultProtocol[_T]:
+    ...
+
+
+@overload
+def signal(
+    value: TMaybeSignal[_T],
+    comp: Union[TSignalOptionInitComp[_T], bool] = None,
+    debug_name: Optional[str] = None,
+) -> SignalResultProtocol[_T]:
+    ...
+
+
+def signal(
+    value: Union[_T, SignalResultProtocol[_T], TMaybeSignal[_T]],
+    comp: Union[TSignalOptionInitComp[_T], bool] = None,
+    debug_name: Optional[str] = None,
+) -> SignalResultProtocol[_T]:
+    if isinstance(value, Signal):
+        return value
+    signal = Signal(value, SignalOption(comp), debug_name)
+    return cast(SignalResultProtocol[_T], signal)

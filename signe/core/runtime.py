@@ -1,108 +1,109 @@
 from __future__ import annotations
-from typing import TYPE_CHECKING, Set, Dict
-from .collections import Stack
+from typing import Dict, TYPE_CHECKING
 
-from .effect import Effect
+from signe.core.consts import EffectState
+from .collections import Stack
+from .protocols import CallerProtocol
 
 if TYPE_CHECKING:
-    from .signal import Signal
+    from signe.core import Effect
+
+
+def _defatul_executor_builder():
+    return Executor()
+
+
+executor_builder = _defatul_executor_builder
+
+
+def get_executor():
+    pass
 
 
 class Executor:
     def __init__(self) -> None:
-        self._observers: Set[Signal] = set()
-        self.effect_running_stack = Stack[Effect]()
+        self._caller_running_stack = Stack[CallerProtocol]()
         self.execution_scheduler_stack = Stack[ExecutionScheduler]()
         self.__defalut_executionScheduler = ExecutionScheduler()
+        self._pause_track_count = 0
+
+    def pause_track(self):
+        self._pause_track_count += 1
+
+    def reset_track(self):
+        self._pause_track_count -= 1
+
+    def should_track(self):
+        return self._pause_track_count <= 0
 
     def set_default_execution_scheduler(self, execution_scheduler: ExecutionScheduler):
         self.__defalut_executionScheduler = execution_scheduler
 
-    @property
-    def current_execution_scheduler(self):
+    def get_current_scheduler(self):
         return (
             self.execution_scheduler_stack.get_current()
             or self.__defalut_executionScheduler
         )
 
-    @property
-    def is_running(self):
-        return (
-            self.current_execution_scheduler.is_running
-            or len(self.effect_running_stack) > 0
-        )
+    def mark_running_caller(self, caller: CallerProtocol):
+        self._caller_running_stack.set_current(caller)
+
+    def reset_running_caller(self, caller: CallerProtocol):
+        self._caller_running_stack.reset_current()
+
+    def get_running_caller(self):
+        return self._caller_running_stack.get_current()
 
 
 class ExecutionScheduler:
     def __init__(self) -> None:
-        self.__tick = 0
-        self.__signal_updates: Dict[Signal, None] = {}
-        self.__effect_updates: Dict[Effect, None] = {}
+        self._effect_updates: Dict[Effect, None] = {}
         self.__running = False
+        self.pause_should_run_stack = 0
 
     @property
-    def tick(self):
-        return self.__tick
+    def should_run(self):
+        return not (self.__running or (self.pause_should_run_stack != 0))
 
-    def add_signal(self, signal: Signal):
-        self.__signal_updates[signal] = None
-        return self
+    def pause_scheduling(self):
+        self.pause_should_run_stack += 1
 
-    def add_effect(self, effect: Effect):
-        self.__effect_updates[effect] = None
-        return self
+    def reset_scheduling(self):
+        self.pause_should_run_stack -= 1
 
-    def next_tick(self):
-        self.__tick += 1
-        return self
-
-    @property
-    def is_running(self):
-        return self.__running
+    def mark_update(self, effect: Effect):
+        self._effect_updates[effect] = None
 
     def run(self):
-        self.__effect_updates.clear()
-        self.next_tick()
         count = 0
         self.__running = True
 
         try:
-            while len(self.__signal_updates) > 0 or len(self.__effect_updates) > 0:
-                self._run_signal_updates()
+            while self._effect_updates:
                 self._run_effect_updates()
 
                 count += 1
                 if count >= 10000:
                     raise Exception("exceeded the maximum number of execution rounds.")
         finally:
-            self.__tick = 0
             self.__running = False
 
-    def cleanup_signal_updates(self):
-        self.__signal_updates.clear()
-
-    def cleanup_effect_updates(self):
-        self.__effect_updates.clear()
-
-    def _run_signal_updates(self):
-        signals = list(self.__signal_updates.keys())
-        for s in signals:
-            s.update()
-
-        self.cleanup_signal_updates()
-
     def _run_effect_updates(self):
-        effects = sorted(self.__effect_updates.keys(), key=lambda x: x.priority_level)
-        for s in effects:
-            s.update()
-            s._reset_age()
-
-        self.cleanup_effect_updates()
+        effects = tuple(self._effect_updates.keys())
+        self._effect_updates.clear()
+        for effect in effects:
+            effect.calc_state()
+            if effect.state <= EffectState.NEED_UPDATE:
+                effect.update()
 
 
 class BatchExecutionScheduler(ExecutionScheduler):
     def __init__(self) -> None:
         super().__init__()
+
+    @property
+    def should_run(self):
+        return True
 
     def run(self):
         pass

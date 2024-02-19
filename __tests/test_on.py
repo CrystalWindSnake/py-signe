@@ -1,19 +1,18 @@
-from typing import List
-from signe import createSignal, on, batch, computed
+from signe.core import signal, on, computed, batch
 import utils
 
 
 class Test_on:
     def test_basic(self):
         dummy1 = dummy2 = None
-        num1, set_num1 = createSignal(1)
-        num2, set_num2 = createSignal(2)
+        num1 = signal(1)
+        num2 = signal(2)
 
         @utils.fn
         def fn_spy(*args):
             nonlocal dummy1, dummy2
-            dummy1 = num1()
-            dummy2 = num2()
+            dummy1 = num1.value
+            dummy2 = num2.value
 
         on(num1, fn_spy)
 
@@ -21,27 +20,44 @@ class Test_on:
         assert dummy1 == 1
         assert dummy2 == 2
 
-        set_num2(99)
+        num2.value = 99
 
         assert fn_spy.calledTimes == 1
         assert dummy1 == 1
         assert dummy2 == 2
 
-        set_num1(100)
+        num1.value = 100
         assert fn_spy.calledTimes == 2
         assert dummy1 == 100
         assert dummy2 == 99
 
+    def test_basic_with_watchState(self):
+        a = signal(1)
+
+        @computed
+        def cp1():
+            return a.value + 1
+
+        @utils.fn
+        def fn_spy(state):
+            pass
+
+        on(cp1, fn_spy)
+
+        assert fn_spy.calledTimes == 1
+        a.value += 1
+        assert fn_spy.calledTimes == 2
+
     def test_onchanges(self):
         dummy1 = dummy2 = None
-        num1, set_num1 = createSignal(1)
-        num2, set_num2 = createSignal(2)
+        num1 = signal(1)
+        num2 = signal(2)
 
         @utils.fn
         def fn_spy(*args):
             nonlocal dummy1, dummy2
-            dummy1 = num1()
-            dummy2 = num2()
+            dummy1 = num1.value
+            dummy2 = num2.value
 
         on(num1, fn_spy, onchanges=True)
 
@@ -49,33 +65,33 @@ class Test_on:
         assert dummy1 is None
         assert dummy2 is None
 
-        set_num2(99)
+        num2.value = 99
 
         assert fn_spy.calledTimes == 0
         assert dummy1 is None
         assert dummy2 is None
 
-        set_num1(100)
+        num1.value = 100
         assert fn_spy.calledTimes == 1
         assert dummy1 == 100
         assert dummy2 == 99
 
     def test_should_executed_twice(self):
         result = []
-        num1, set_num1 = createSignal(1)
-        num2, set_num2 = createSignal(2)
+        num1 = signal(1)
+        num2 = signal(2)
 
-        cp_total = computed(lambda: num1() + num2())
+        cp_total = computed(lambda: num1.value + num2.value)
 
         @on([num1, num2, cp_total])
         def _on2():
-            result.append(cp_total())
+            result.append(cp_total.value)
 
         # change 1
         @batch
         def _():
-            set_num1(666)
-            set_num2(666)
+            num1.value = 666
+            num2.value = 666
 
         assert result == [3, 666 + 666]
 
@@ -91,10 +107,10 @@ class Test_on:
             def time(self):
                 return self._time
 
-        num1, set_num1 = createSignal(1)
-        num2, set_num2 = createSignal(2)
+        num1 = signal(1)
+        num2 = signal(2)
 
-        cp_total = computed(lambda: num1() + num2())
+        cp_total = computed(lambda: num1.value + num2.value)
 
         run_state_on1 = RunState(1)
 
@@ -143,8 +159,8 @@ class Test_on:
         # change 1
         @batch
         def _():
-            set_num1(666)
-            set_num2(666)
+            num1.value = 666
+            num2.value = 666
 
         # change 2
-        set_num1(999)
+        num1.value = 999

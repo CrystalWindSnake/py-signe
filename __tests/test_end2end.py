@@ -1,25 +1,25 @@
 import _imports
 import pytest
 import utils
-from signe import createSignal, effect, computed, cleanup, createReactive, batch
+from signe.core import signal, effect, computed, cleanup, reactive, batch
 
 
 class Test_signal_case:
     def test_should_work_fine_after_effecting_error(self):
-        num1, set_num1 = createSignal(1)
+        num1 = signal(1)
 
         dummy = 0
 
         @effect
         def error_effect():
             nonlocal dummy
-            if num1() == 99:
+            if num1.value == 99:
                 raise Exception("error")
 
-            dummy = num1()
+            dummy = num1.value
 
         try:
-            set_num1(99)
+            num1.value = 99
         except Exception as e:
             pass
         finally:
@@ -27,7 +27,7 @@ class Test_signal_case:
 
         assert dummy == 1
 
-        num2, set_num2 = createSignal(1)
+        num2 = signal(1)
 
         dummy2 = 0
 
@@ -35,19 +35,19 @@ class Test_signal_case:
         def normal_effect():
             nonlocal dummy2
 
-            dummy2 = num2()
+            dummy2 = num2.value
 
         assert dummy2 == 1
 
-        set_num2(666)
+        num2.value = 666
         assert dummy2 == 666
 
     def test_memo_run_when_get_value(self):
-        num, set_num = createSignal(1)
+        num = signal(1)
 
         @utils.fn
         def fn_spy():
-            return num() + 1
+            return num.value + 1
 
         m1 = computed(fn_spy)
 
@@ -59,15 +59,15 @@ class Test_signal_case:
         assert fn_spy.calledTimes == 1
 
     def test_run_effect_once(self):
-        num, set_num = createSignal(1)
+        num = signal(1)
 
         @computed
         def plus1():
-            return num() + 1
+            return num.value + 1
 
         @computed
         def plus10():
-            return num() + 10
+            return num.value + 10
 
         dummy = None
 
@@ -81,40 +81,40 @@ class Test_signal_case:
         assert fn_spy.calledTimes == 1
         assert dummy == 13
 
-        set_num(100)
+        num.value = 100
         assert fn_spy.calledTimes == 2
         assert dummy == (101 + 110)
 
     def test_cycle_effect(self):
-        num, set_num = createSignal(1)
+        num = signal(1)
 
         dummy = None
 
         @utils.fn
         def fn_spy():
             nonlocal dummy
-            set_num(99)
-            dummy = num()
+            num.value = 99
+            dummy = num.value
 
         effect(fn_spy)
 
         assert fn_spy.calledTimes == 1
-        assert num() == 99
+        assert num.value == 99
 
-        set_num(555)
+        num.value = 555
         assert fn_spy.calledTimes == 2
         assert dummy == 99
 
     def test_batch_(self):
-        num1, set_num1 = createSignal(1)
-        num2, set_num2 = createSignal(10)
+        num1 = signal(1)
+        num2 = signal(10)
 
         dummy = None
 
         @utils.fn
         def fn_spy():
             nonlocal dummy
-            dummy = num1() + num2()
+            dummy = num1.value + num2.value
 
         effect(fn_spy)
 
@@ -123,11 +123,11 @@ class Test_signal_case:
 
         @batch
         def _():
-            set_num1(50)
-            set_num2(100)
+            num1.value = 50
+            num2.value = 100
 
-            assert num1() == 50
-            assert num2() == 100
+            assert num1.value == 50
+            assert num2.value == 100
 
             assert fn_spy.calledTimes == 1
             assert dummy == 11
@@ -136,7 +136,7 @@ class Test_signal_case:
         assert dummy == 150
 
     def test_cleanup_not_trigger_when_init(self):
-        num, set_num = createSignal(1)
+        num = signal(1)
         dummy = None
 
         @utils.fn
@@ -147,16 +147,16 @@ class Test_signal_case:
         def _():
             nonlocal dummy
             cleanup(cleanup_spy)
-            dummy = num()
+            dummy = num.value
 
         assert cleanup_spy.calledTimes == 0
 
-        set_num(99)
+        num.value = 99
 
         assert cleanup_spy.calledTimes == 1
 
     def test_cleanup_should_trigger_condition(self):
-        cond, set_cond = createSignal(True)
+        cond = signal(True)
 
         @utils.fn
         def cleanup_spy():
@@ -164,17 +164,17 @@ class Test_signal_case:
 
         @effect
         def _():
-            if cond():
+            if cond.value:
                 cleanup(cleanup_spy)
 
         assert cleanup_spy.calledTimes == 0
 
-        set_cond(False)
+        cond.value = False
 
         assert cleanup_spy.calledTimes == 1
 
     def test_todos(self):
-        todos = createReactive(
+        todos = reactive(
             [
                 {"name": "事项1", "done": False},
                 {"name": "事项2", "done": False},
@@ -196,7 +196,7 @@ class Test_signal_case:
         @utils.fn
         def show_spy():
             nonlocal dummy_show
-            dummy_show = total()
+            dummy_show = total.value
 
         effect(show_spy, debug_name="show_spy")
 
@@ -222,16 +222,16 @@ class Test_signal_case:
 
     def test_signal_assignment_triggere_in_effect(self):
         '''"During an execution, the signal assignment operation is triggered in method A."'''
-        num, set_num = createSignal(0)
-        get_cp_num1, set_cp_num1 = createSignal(99)
+        num = signal(0)
+        get_cp_num1 = signal(99)
 
         @computed
         def cp_1():
-            return get_cp_num1() + 1
+            return get_cp_num1.value + 1
 
         @effect
         def _():
-            num()
+            num.value
             cp_1()
 
         dummy1 = None
@@ -240,38 +240,39 @@ class Test_signal_case:
         def spy_fn():
             nonlocal dummy1
             dummy1 = cp_1()
-            set_num(99)
+            num.value = 99
 
         effect(spy_fn)
 
         assert spy_fn.calledTimes == 1
         assert dummy1 == 100
 
-        set_cp_num1(10)
+        get_cp_num1.value = 10
 
         assert spy_fn.calledTimes == 2
         assert dummy1 == 11
 
     @utils.mark_todo
     def test_cycle_chain_effect(self):
-        num1, set_num1 = createSignal(1)
-        num2, set_num2 = createSignal(0)
+        num1 = signal(1)
+        num2 = signal(0)
 
         dummy1 = dummy2 = None
 
         @utils.fn
         def fn_spy1():
             nonlocal dummy1
-            set_num2(num1() + 1)
-            dummy1 = num1()
+            num2.value = num1.value + 1
+            dummy1 = num1.value
 
         effect(fn_spy1)
 
         @utils.fn
         def fn_spy2():
             nonlocal dummy2
-            set_num1(lambda x: x + 1)
-            dummy2 = num2()
+            num1.value += 1
+            # set_num1(lambda x: x + 1)
+            dummy2 = num2.value
 
         effect(fn_spy2)
 
@@ -281,7 +282,7 @@ class Test_signal_case:
         assert dummy1 == 2
         assert dummy2 == 3
 
-        set_num1(100)
+        num1.value = 100
         assert fn_spy1.calledTimes == 3
         assert fn_spy2.calledTimes == 2
 

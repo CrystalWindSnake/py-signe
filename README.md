@@ -1,38 +1,43 @@
 # py-signe
 
-#### 介绍
-按照 [S.js](https://github.com/adamhaile/S) 的核心机制，在 python 中实现的响应式系统
+[中文文档](./README.cn.md)
 
-#### 安装
+
+#### Introduction
+A responsive system implemented in python with reference to the core mechanisms of [S.js](https://github.com/adamhaile/S) and [vue reactivity](https://github.com/vuejs/core/tree/main/packages/reactivity). 
+
+
+#### Installation
 ```shell
 pip install signe
 ```
 
+
+
 #### 使用
 ```python
-from signe import createSignal, effect, computed
+from signe import signal, effect, computed
 
-get_num, set_num = createSignal(1)
+num = signal(1)
 
 @computed
 def plus1():
-    return get_num() + 1
+    return num.value + 1
 
 
 @effect
 def _():
-    print('plus1 is :',plus1())
+    print('plus1 is :',plus1.value)
 
-# 此时控制台打印 `plus1 is :2`
+# should print `plus1 is :2`
 
-set_num(10)
+num.value=10
 
-# 此时控制台打印 `plus1 is :11`
+# should print `plus1 is :11`
 
 
 ```
 
-- `createSignal` 创建信号。信号包含2个主要函数，分别是 `getter` 与 `setter` 函数。
-- `computed` 创建计算表达。其参数为一个函数。函数中使用信号的 `getter` 函数获取值，则此计算表达与信号自动产生关联。当信号的值变化时，计算表达也会自动触发改变。
-- `effect` 本质上与 `computed` 一样。可以自动捕获信号或计算表达`computed`的改变，从而自动触发。
-
+- `signal` Creates a signal. Reads and writes via `.value`.
+- `computed` Creates a computed expression. The argument is a function. When a signal (`signal.value`) is used in the function to get a value, this calculation expression is automatically associated with the signal. When the value of the signal changes, the computed expression is automatically triggered to change.
+- `effect` is essentially the same as `computed`. A change in the signal or `computed` expression is automatically captured and triggered.
