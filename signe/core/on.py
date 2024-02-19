@@ -2,6 +2,7 @@ from dataclasses import dataclass
 import inspect
 from signe.core import Effect
 from signe.core.context import get_executor
+from signe.core.reactive import is_reactive, track_all
 from signe.core.scope import IScope
 from typing import (
     Any,
@@ -13,11 +14,28 @@ from typing import (
     Union,
     overload,
     Optional,
+    Generic,
 )
 
-from .types import TGetterSignal
+from .types import TGetter, TGetterSignal
+from .helper import is_signal
 
 T = TypeVar("T")
+
+
+class GetterModel(Generic[T]):
+    def __init__(self, fn: Callable[[], T]) -> None:
+        assert isinstance(fn, Callable)
+        self._fn = fn
+
+    @property
+    def value(self):
+        obj = self._fn()
+        assert is_reactive(obj)
+
+        track_all(obj)
+
+        return obj
 
 
 @dataclass(frozen=True)
@@ -32,7 +50,7 @@ def _get_func_args_count(fn):
 
 @overload
 def on(
-    getter: Union[TGetterSignal, Sequence[TGetterSignal]],
+    getter: Union[TGetter, Sequence[TGetter]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -44,7 +62,7 @@ def on(
 
 @overload
 def on(
-    getter: Union[TGetterSignal, Sequence[TGetterSignal]],
+    getter: Union[TGetter, Sequence[TGetter]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -54,7 +72,7 @@ def on(
 
 
 def on(
-    getter: Union[TGetterSignal, Sequence[TGetterSignal]],
+    getter: Union[TGetter, Sequence[TGetter]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -72,9 +90,9 @@ def on(
 
     getters: List[TGetterSignal] = []
     if isinstance(getter, Sequence):
-        getters = getter  # type: ignore
+        getters = [g if is_signal(g) else GetterModel(g) for g in getter]  # type: ignore
     else:
-        getters = [getter]  # type: ignore
+        getters = [getter if is_signal(getter) else GetterModel(getter)]  # type: ignore
 
     targets = getters
 

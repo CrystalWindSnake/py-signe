@@ -25,6 +25,11 @@ P = TypeVar("P")
 _proxy_maps: WeakValueDictionary = WeakValueDictionary()
 
 
+def track_all(obj):
+    if isinstance(obj, (DictProxy, ListProxy)):
+        iter(obj)
+
+
 def reactive(obj: T) -> T:
     if isinstance(
         obj,
@@ -60,6 +65,10 @@ def reactive(obj: T) -> T:
     return cast(T, proxy)
 
     # return obj
+
+
+def is_reactive(obj: T) -> bool:
+    return _is_proxy(obj)
 
 
 def to_raw(obj: T) -> T:
@@ -164,6 +173,7 @@ class ListProxy(UserList):
 
         if common_not_eq_value(org_value, item):
             self._dep_manager.triggered(i, item, EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def __iter__(self) -> Iterator:
         self._dep_manager.tracked("__iter__")

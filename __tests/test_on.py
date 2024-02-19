@@ -1,4 +1,4 @@
-from signe.core import signal, on, computed, batch
+from signe.core import signal, on, computed, batch, reactive
 import utils
 
 
@@ -75,6 +75,22 @@ class Test_on:
         assert fn_spy.calledTimes == 1
         assert dummy1 == 100
         assert dummy2 == 99
+
+    def test_watch_on_reactive(self):
+        dummy = []
+
+        data = reactive([1, 2, 3, 4])
+        s = signal(1)
+
+        @on(lambda: data)
+        def _():
+            dummy.append(data[0])
+            s.value
+
+        assert dummy == [1]
+        data[0] = 99
+        s.value = 99
+        assert dummy == [1, 99]
 
     def test_should_executed_twice(self):
         result = []

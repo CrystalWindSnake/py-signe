@@ -6,7 +6,7 @@ from .batch import batch
 from .on import on, WatchedState
 from .helper import to_value, is_signal
 from .cleanup import cleanup
-from .reactive import reactive, to_raw
+from .reactive import reactive, to_raw, is_reactive
 from .scope import scope
 from .types import TMaybeSignal, TGetterSignal, TSignal
 
@@ -31,4 +31,5 @@ __all__ = [
     "TGetterSignal",
     "TSignal",
     "WatchedState",
+    "is_reactive",
 ]
