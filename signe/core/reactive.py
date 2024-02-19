@@ -1,7 +1,9 @@
+from __future__ import annotations
 from collections import UserDict, UserList
 from datetime import date, datetime
 from typing import (
     Any,
+    Callable,
     Dict,
     Iterator,
     List,
@@ -26,24 +28,22 @@ P = TypeVar("P")
 _proxy_maps: WeakValueDictionary = WeakValueDictionary()
 
 
-@overload
-def reactive(obj: List[T]) -> List[T]:
-    ...
-
-
-@overload
-def reactive(obj: Dict[T, P]) -> Dict[T, P]:
-    ...
-
-
-@overload
 def reactive(obj: T) -> T:
-    ...
-
-
-def reactive(obj: Union[List, Dict, T]) -> Union[List, Dict, T]:
-    if isinstance(obj, (str, int, float, date, datetime, ListProxy, DictProxy)):
-        return obj
+    if isinstance(
+        obj,
+        (
+            str,
+            int,
+            float,
+            date,
+            datetime,
+            ListProxy,
+            DictProxy,
+            Callable,
+            InstanceProxy,
+        ),
+    ):
+        return cast(T, obj)
 
     obj_id = id(obj)
     proxy = _proxy_maps.get(obj_id)
@@ -52,17 +52,17 @@ def reactive(obj: Union[List, Dict, T]) -> Union[List, Dict, T]:
         return proxy  # type: ignore
 
     if isinstance(obj, Mapping):
-        proxy = cast(Dict, DictProxy(obj))
-        _proxy_maps[obj_id] = proxy
-        return proxy
+        proxy = DictProxy(obj)
 
-    if isinstance(obj, Iterable):
-        proxy = cast(List, ListProxy(obj))
-        _proxy_maps[obj_id] = proxy
-        return proxy
-    return obj
+    elif isinstance(obj, Iterable):
+        proxy = ListProxy(obj)
+    else:
+        proxy = InstanceProxy(obj)
 
-    # return cast(T, InstanceProxy(obj))
+    _proxy_maps[obj_id] = proxy
+    return cast(T, proxy)
+
+    # return obj
 
 
 def to_raw(obj: T) -> T:
@@ -201,3 +201,47 @@ class ListProxy(UserList):
 
     def to_raw(self):
         return self.data
+
+
+def register(
+    proxy: InstanceProxy,
+    ins,
+):
+    _ins_map[proxy] = ins
+    _proxy_dep_map[proxy] = GetterDepManager()
+
+
+def track(proxy: InstanceProxy, key):
+    ins = _ins_map.get(proxy)
+    dep_manager = _proxy_dep_map.get(proxy)
+    assert ins
+    assert dep_manager
+
+    dep_manager.tracked(key)
+
+    value = getattr(ins, key)
+
+    return value
+
+
+def trigger(proxy: InstanceProxy, key, value):
+    ins = _ins_map.get(proxy)
+    dep_manager = _proxy_dep_map.get(proxy)
+
+    assert ins
+    assert dep_manager
+
+    setattr(ins, key, value)
+    dep_manager.triggered(key, value, EffectState.NEED_UPDATE)
+
+
+class InstanceProxy:
+    def __init__(self, ins) -> None:
+        register(self, ins)
+
+    def __getattr__(self, _name: str) -> Any:
+        value = track(self, _name)
+        return value
+
+    def __setattr__(self, _name: str, _value: Any) -> None:
+        trigger(self, _name, _value)
