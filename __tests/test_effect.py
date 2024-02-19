@@ -1,7 +1,7 @@
 import json
 import _imports
 import pytest
-from signe.core import reactive, effect, computed, signal
+from signe.core import reactive, effect, computed, signal, stop
 import utils
 from typing import Callable
 import math
@@ -205,7 +205,7 @@ class Test_effect_basic:
         assert dummy == 2
         assert lenSpy.calledTimes == 2
 
-    @utils.mark_todo
+    # @utils.mark_todo
     def test_observe_func_valued_prop(self):
         def oldFunc():
             pass
@@ -688,7 +688,7 @@ class Test_effect_basic:
     def test_events_onTrigger(self):
         assert False, "todo"
 
-    @utils.mark_todo
+    # @utils.mark_todo
     def test_stop(self):
         dummy = None
         obj = reactive({"prop": 1})

@@ -1,5 +1,5 @@
 from .signal import Signal, signal
-from .effect import Effect, effect
+from .effect import Effect, effect, stop
 from .computed import Computed, computed
 from .runtime import Executor
 from .batch import batch
@@ -24,4 +24,5 @@ __all__ = [
     "cleanup",
     "reactive",
     "scope",
+    "stop",
 ]

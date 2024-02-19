@@ -50,7 +50,8 @@ class Effect(Generic[_T]):
     ) -> None:
         self.__id = self._id_gen.new()
         self._executor = get_executor()
-        self.fn = fn
+        self._active = True
+        self._fn = fn
         self._trigger_fn = trigger_fn
         self._upstream_refs: Set[Dep] = set()
         self._debug_name = debug_name
@@ -138,6 +139,9 @@ class Effect(Generic[_T]):
         self._state = state
 
     def update(self) -> _T:
+        if not self._active:
+            return self._fn()
+
         try:
             self._exec_cleanups()
             self._executor.mark_running_caller(self)
@@ -147,7 +151,7 @@ class Effect(Generic[_T]):
                 self._clear_all_deps()
 
             self._dispose_sub_effects()
-            result = self.fn()
+            result = self._fn()
             if self._debug_trigger:
                 self._debug_trigger()
 
@@ -156,6 +160,10 @@ class Effect(Generic[_T]):
         finally:
             self._state = EffectState.STALE
             self._executor.reset_running_caller(self)
+
+    def stop(self):
+        self._clear_all_deps()
+        self._active = False
 
     def _clear_all_deps(self):
         for dep in self._upstream_refs:
@@ -167,8 +175,8 @@ class Effect(Generic[_T]):
         self._clear_all_deps()
         self._exec_cleanups()
         self._dispose_sub_effects()
-        self.fn = None
-        self._trigger_fn = None
+        del self._fn
+        del self._trigger_fn
 
     def _dispose_sub_effects(self):
         for sub in self._sub_effects:
@@ -263,3 +271,7 @@ def effect(
             return effect(fn, **kws, scope=scope)
 
         return wrap
+
+
+def stop(effect: Effect):
+    effect.stop()
