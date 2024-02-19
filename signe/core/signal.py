@@ -23,14 +23,22 @@ TSignalOptionComp = Callable[[TComp, TComp], bool]
 TSignalOptionInitComp = Optional[Union[bool, TSignalOptionComp[TComp]]]
 
 
+def _eq_base_comp(old, new):
+    return old == new
+
+
+def _always_false_comp(old, new):
+    return False
+
+
 class SignalOption(Generic[_T]):
     __slots__ = ("comp",)
 
     def __init__(self, comp: TSignalOptionInitComp[_T] = None) -> None:
         if comp is None:
-            comp = lambda old, new: old == new
-        elif comp == False:
-            comp = lambda old, new: False
+            comp = _eq_base_comp
+        elif comp is False:
+            comp = _always_false_comp
         self.comp: TSignalOptionComp = comp  # type: ignore
 
 

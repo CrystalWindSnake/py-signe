@@ -6,7 +6,6 @@ if TYPE_CHECKING:
     from signe.core.collections import Stack
     from signe.core.deps import Dep
     from .consts import EffectState
-    from .effect import Effect
     from .runtime import ExecutionScheduler
 
 _T = TypeVar("_T")
@@ -17,7 +16,7 @@ class DisposableProtocol(Protocol):
         ...
 
 
-class GetterProtocol(Protocol[_T]):
+class GetterProtocol(Protocol[_T]):  # type: ignore
     @property
     def id(self) -> str:
         ...
@@ -34,7 +33,7 @@ class GetterProtocol(Protocol[_T]):
         ...
 
 
-class CallerProtocol(Protocol[_T]):
+class CallerProtocol(Protocol[_T]):  # type: ignore
     auto_collecting_dep: bool
 
     @property
@@ -105,7 +104,7 @@ class SignalResultProtocol(Protocol[_T]):
         ...
 
 
-class ComputedResultProtocol(Generic[_T], Protocol):
+class ComputedResultProtocol(Generic[_T], Protocol):  # type: ignore
     @property
     def value(self) -> _T:
         ...
