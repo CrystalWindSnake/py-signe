@@ -1,7 +1,7 @@
 import json
 import _imports
 import pytest
-from signe.core import reactive, effect, computed, signal, stop
+from signe.core import reactive, effect, computed, signal, stop, to_raw
 import utils
 from typing import Callable
 import math
@@ -272,7 +272,7 @@ class Test_effect_basic:
         assert getDummy == "value"
         assert hasDummy == True
 
-    @utils.mark_todo
+    # @utils.mark_todo
     def test_not_observe_raw(self):
         dummy = None
         obj = reactive({"prop": "value"})
@@ -280,13 +280,13 @@ class Test_effect_basic:
         @effect
         def _():
             nonlocal dummy
-            dummy = toRaw(obj)["prop"]
+            dummy = to_raw(obj)["prop"]
 
         assert dummy == "value"
         obj["prop"] = "new value"
         assert dummy == "value"
 
-    @utils.mark_todo
+    # @utils.mark_todo
     def test_not_triggered_by_raw(self):
         dummy = None
         obj = reactive({"prop": "value"})
@@ -297,7 +297,7 @@ class Test_effect_basic:
             dummy = obj["prop"]
 
         assert dummy == "value"
-        toRaw(obj)["prop"] = "new value"
+        to_raw(obj)["prop"] = "new value"
         assert dummy == "value"
 
     @utils.mark_todo
@@ -409,7 +409,7 @@ class Test_effect_basic:
         assert dummy == "world"
         assert conditionalSpy.calledTimes == 3
 
-    @utils.mark_todo
+    # @utils.mark_todo
     def test_discover_new_branches_when_running_manually(self):
         dummy = None
         run = False

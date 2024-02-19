@@ -1,5 +1,13 @@
 from __future__ import annotations
-from typing import Callable, Generic, Optional, Protocol, TypeVar, TYPE_CHECKING
+from typing import (
+    Callable,
+    Generic,
+    Optional,
+    Protocol,
+    TypeVar,
+    TYPE_CHECKING,
+    runtime_checkable,
+)
 
 
 if TYPE_CHECKING:
@@ -112,4 +120,10 @@ class ComputedResultProtocol(Generic[_T], Protocol):  # type: ignore
     def __call__(
         self,
     ) -> _T:
+        ...
+
+
+@runtime_checkable
+class RawableProtocol(Protocol[_T]):
+    def to_raw(self) -> _T:
         ...

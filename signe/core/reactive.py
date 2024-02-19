@@ -14,6 +14,7 @@ from typing import (
 )
 from signe.core.consts import EffectState
 from signe.core.deps import GetterDepManager
+from signe.core.protocols import RawableProtocol
 from signe.core.utils import common_not_eq_value
 from .batch import batch
 from weakref import WeakValueDictionary
@@ -62,6 +63,12 @@ def reactive(obj: Union[List, Dict, T]) -> Union[List, Dict, T]:
     return obj
 
     # return cast(T, InstanceProxy(obj))
+
+
+def to_raw(obj: T) -> T:
+    if isinstance(obj, RawableProtocol):
+        return obj.to_raw()
+    return obj
 
 
 class DictProxy(UserDict):
@@ -133,6 +140,9 @@ class DictProxy(UserDict):
 
         return False
 
+    def to_raw(self):
+        return self.data
+
 
 class ListProxy(UserList):
     def __init__(self, initlist):
@@ -188,3 +198,6 @@ class ListProxy(UserList):
         super().clear()
         self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
         self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+    def to_raw(self):
+        return self.data
