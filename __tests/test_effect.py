@@ -575,7 +575,6 @@ class Test_effect_basic:
         assert dummy == 16
         assert fnSpy.calledTimes == 2
 
-    @utils.mark_todo
     def test_should_allow_nested_effects(self):
         nums = reactive({"num1": 0, "num2": 1, "num3": 2})
         dummy = {}
