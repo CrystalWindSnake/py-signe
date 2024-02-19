@@ -50,6 +50,7 @@ class Computed(Generic[_T]):
             debug_trigger=debug_trigger,
             scope=scope,
             state=EffectState.COMPUTED_INIT,
+            debug_name=debug_name,
         )
         self._dep_manager = GetterDepManager()
         if scope:
@@ -102,7 +103,7 @@ class Computed(Generic[_T]):
         self._value = new_value
 
     def __repr__(self) -> str:
-        return f"Computed(id ={self.id}, name={self._debug_name})"
+        return f"Computed(id ={self.id}, name={self._debug_name}),state={self._effect.state}"
 
 
 _T_computed = ComputedResultProtocol[_T]

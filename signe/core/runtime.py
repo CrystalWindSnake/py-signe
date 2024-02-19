@@ -16,10 +16,6 @@ def _defatul_executor_builder():
 executor_builder = _defatul_executor_builder
 
 
-def get_executor():
-    pass
-
-
 class Executor:
     def __init__(self) -> None:
         self._caller_running_stack = Stack[CallerProtocol]()

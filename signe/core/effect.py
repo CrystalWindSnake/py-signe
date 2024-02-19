@@ -16,7 +16,7 @@ from typing import (
 
 from signe.core.idGenerator import IdGen
 
-from signe.core.protocols import GetterProtocol, IScope
+from signe.core.protocols import GetterProtocol, IScope, PauseTrackableProtocol
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER
 from .consts import EffectState
 from .context import get_executor
@@ -78,7 +78,12 @@ class Effect(Generic[_T]):
             self.auto_collecting_dep = True
 
             for getter in on:
-                getter.value
+                if isinstance(getter, PauseTrackableProtocol):
+                    getter.enable_track()
+                    getter.value
+                    getter.disable_track()
+                else:
+                    getter.value
 
             self.auto_collecting_dep = False
             self._executor.reset_running_caller(self)
@@ -103,7 +108,7 @@ class Effect(Generic[_T]):
             return
 
         self._state = EffectState.QUERYING
-        self._executor.pause_track()
+        # self._executor.pause_track()
 
         for dep in self._upstream_refs:
             if dep.computed:
@@ -114,7 +119,7 @@ class Effect(Generic[_T]):
         if self._state == EffectState.QUERYING:
             self._state = EffectState.STALE
 
-        self._executor.reset_track()
+        # self._executor.reset_track()
 
     def is_need_update(self):
         return self.state <= EffectState.NEED_UPDATE

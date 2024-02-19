@@ -19,6 +19,15 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
+@runtime_checkable
+class PauseTrackableProtocol(Protocol):
+    def enable_track(self):
+        ...
+
+    def disable_track(self):
+        ...
+
+
 class DisposableProtocol(Protocol):
     def dispose(self):
         ...

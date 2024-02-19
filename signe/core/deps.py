@@ -55,7 +55,7 @@ class GetterDepManager:
         if not (
             running_caller
             and running_caller.auto_collecting_dep
-            and self._executor.should_track
+            and self._executor.should_track()
         ):
             return
 

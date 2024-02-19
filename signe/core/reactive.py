@@ -14,6 +14,7 @@ from signe.core.consts import EffectState
 from signe.core.deps import GetterDepManager
 from signe.core.protocols import RawableProtocol
 from signe.core.utils import common_not_eq_value
+from .context import get_executor
 from .batch import batch
 from weakref import WeakKeyDictionary, WeakValueDictionary
 import types
@@ -46,6 +47,10 @@ def track_all_deep(obj):
 
 
 def track_all(obj, deep=False):
+    executor = get_executor()
+    if not executor.should_track():
+        return
+
     if isinstance(obj, (DictProxy, ListProxy)):
         if deep:
             track_all_deep(obj)

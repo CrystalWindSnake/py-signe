@@ -28,15 +28,23 @@ class GetterModel(Generic[T]):
         assert isinstance(fn, Callable)
         self._fn = fn
         self._deep = deep
+        self.__track = False
 
     @property
     def value(self):
         obj = self._fn()
         assert is_reactive(obj)
 
-        track_all(obj, self._deep)
+        if self.__track:
+            track_all(obj, self._deep)
 
         return obj
+
+    def enable_track(self):
+        self.__track = True
+
+    def disable_track(self):
+        self.__track = False
 
 
 @dataclass(frozen=True)

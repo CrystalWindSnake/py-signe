@@ -108,6 +108,25 @@ class Test_on:
         s.value = 99
         assert dummy == [1, 99]
 
+    def test_watch_on_reactive_with_deep_mode(self):
+        dummy = []
+
+        data = reactive(
+            [
+                {"name": "n1", "age": 10},
+                {"name": "n2", "age": 20},
+                {"name": "n3", "age": 30},
+            ]
+        )
+
+        @on(lambda: data, deep=True)
+        def _():
+            dummy.append(data[0]["age"])
+
+        assert dummy == [10]
+        data[0]["age"] = 99
+        assert dummy == [10, 99]
+
     def test_watch_on_reactive_by_class(self):
         dummy = []
 
@@ -163,14 +182,16 @@ class Test_on:
             def time(self):
                 return self._time
 
-        num1 = signal(1)
+        num1 = signal(1, debug_name="num1")
         num2 = signal(2)
 
-        cp_total = computed(lambda: num1.value + num2.value)
+        @computed(debug_name="cp tota")
+        def cp_total():
+            return num1.value + num2.value
 
         run_state_on1 = RunState(1)
 
-        @on(num1, onchanges=True)
+        @on(num1, onchanges=True, effect_kws={"debug_name": "on1"})
         def _on1(s1):
             if run_state_on1.time == 1:
                 assert s1.previous == 1
@@ -184,7 +205,7 @@ class Test_on:
 
         run_state_on2 = RunState(0)
 
-        @on([num1, num2, cp_total])
+        @on([num1, num2, cp_total], effect_kws={"debug_name": "on2"})
         def _on2(s1, s2, s3):
             if run_state_on2.time == 0:
                 assert s1.previous == 1
