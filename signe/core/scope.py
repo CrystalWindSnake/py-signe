@@ -10,21 +10,21 @@ from signe.core.protocols import IScope
 from weakref import WeakSet
 
 if TYPE_CHECKING:
-    from .effect import Effect
+    from .protocols import DisposableProtocol
 
 
 class Scope(IScope):
     def __init__(self) -> None:
-        self._effects: WeakSet[Effect] = WeakSet()
+        self._disposables: WeakSet[DisposableProtocol] = WeakSet()
 
-    def add_effect(self, effect: Effect):
-        self._effects.add(effect)
+    def add_disposable(self, disposable: DisposableProtocol):
+        self._disposables.add(disposable)
 
     def dispose(self):
-        for effect in self._effects:
+        for effect in self._disposables:
             effect.dispose()
 
-        self._effects.clear()
+        self._disposables.clear()
 
 
 class GlobalScopeManager:
@@ -49,14 +49,16 @@ class GlobalScopeManager:
             s.dispose()
             self._stack.pop()
 
-    def mark_effect_with_scope(self, scope: Optional[Scope], effect: Effect):
+    def mark_effect_with_scope(
+        self, scope: Optional[Scope], effect: DisposableProtocol
+    ):
         s = scope
         if s:
-            s.add_effect(effect)
+            s.add_disposable(effect)
 
         return effect
 
-    def mark_effect(self, effect: Effect):
+    def mark_effect(self, effect: DisposableProtocol):
         return self.mark_effect_with_scope(self._get_last_scope(), effect)
 
 

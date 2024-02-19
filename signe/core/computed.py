@@ -22,10 +22,6 @@ from .scope import _GLOBAL_SCOPE_MANAGER
 _T = TypeVar("_T")
 
 
-def nothing():
-    pass
-
-
 class Computed(Generic[_T]):
     _id_gen = IdGen("Computed")
 
@@ -56,6 +52,8 @@ class Computed(Generic[_T]):
             state=EffectState.COMPUTED_INIT,
         )
         self._dep_manager = GetterDepManager()
+        if scope:
+            scope.add_disposable(self)
 
     @property
     def id(self):
@@ -71,17 +69,21 @@ class Computed(Generic[_T]):
 
     def trigger(self, state: EffectState):
         state = EffectState.PENDING if state == EffectState.NEED_UPDATE else state
-        self._effect.update_state(state)
+        self._effect.update_state(state)  # type: ignore
 
         self._dep_manager.triggered("value", self._value, state)
 
     def confirm_state(self):
-        if self._effect.state <= EffectState.NEED_UPDATE:
+        if self._effect.state <= EffectState.NEED_UPDATE:  # type: ignore
             self._update_value()
+
+    def dispose(self):
+        self._effect = None
+        self._value = None
 
     @property
     def value(self):
-        if self._effect.state <= EffectState.NEED_UPDATE:
+        if self._effect.state <= EffectState.NEED_UPDATE:  # type: ignore
             self._update_value()
 
         self._dep_manager.tracked("value", computed=self)
@@ -91,7 +93,7 @@ class Computed(Generic[_T]):
         return self.value  # type: ignore
 
     def _update_value(self):
-        new_value = self._effect.update()
+        new_value = self._effect.update()  # type: ignore
 
         if common_not_eq_value(self._value, new_value):
             self._dep_manager.triggered("value", new_value, EffectState.NEED_UPDATE)

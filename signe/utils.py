@@ -59,7 +59,7 @@ class GlobalScopeManager:
     def mark_effect_with_scope(self, scope: Optional[Scope], effect: Effect):
         s = scope
         if s:
-            s.add_effect(effect)
+            s.add_disposable(effect)
 
         return effect
 

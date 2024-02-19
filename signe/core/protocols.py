@@ -12,6 +12,11 @@ if TYPE_CHECKING:
 _T = TypeVar("_T")
 
 
+class DisposableProtocol(Protocol):
+    def dispose(self):
+        ...
+
+
 class GetterProtocol(Protocol[_T]):
     @property
     def id(self) -> str:
@@ -58,7 +63,7 @@ class CallerProtocol(Protocol[_T]):
 
 
 class IScope(Protocol):
-    def add_effect(self, effect: Effect):
+    def add_disposable(self, disposable: DisposableProtocol):
         ...
 
     def dispose(self):

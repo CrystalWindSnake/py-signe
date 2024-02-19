@@ -63,7 +63,7 @@ class Effect(Generic[_T]):
         self._cleanups: List[Callable[[], None]] = []
 
         if scope:
-            scope.add_effect(self)
+            scope.add_disposable(self)
 
         self._sub_effects: List[Effect] = []
 
