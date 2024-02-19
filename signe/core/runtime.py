@@ -1,12 +1,12 @@
 from __future__ import annotations
-from typing import Iterable, List, Dict, TYPE_CHECKING, cast
+from typing import Dict, TYPE_CHECKING
 
 from signe.core.consts import EffectState
 from .collections import Stack
-from .protocols import CallerProtocol, GetterProtocol
+from .protocols import CallerProtocol
 
 if TYPE_CHECKING:
-    from signe.core import Effect, Signal, Computed
+    from signe.core import Effect
 
 
 def _defatul_executor_builder():

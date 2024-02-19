@@ -9,7 +9,7 @@ class Test_on:
         num2 = signal(2)
 
         @utils.fn
-        def fn_spy():
+        def fn_spy(*args):
             nonlocal dummy1, dummy2
             dummy1 = num1.value
             dummy2 = num2.value

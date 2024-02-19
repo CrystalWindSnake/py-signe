@@ -71,8 +71,12 @@ class Effect(Generic[_T]):
             assert on
 
             self._executor.mark_running_caller(self)
+            self.auto_collecting_dep = True
+
             for getter in on:
                 getter.value
+
+            self.auto_collecting_dep = False
             self._executor.reset_running_caller(self)
 
         if immediate:
@@ -195,6 +199,7 @@ _TEffect_Fn = Callable[[Callable[..., _T]], Effect]
 def effect(
     fn: None = ...,
     *,
+    immediate=True,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
@@ -207,6 +212,7 @@ def effect(
 def effect(
     fn: Callable[[], None],
     *,
+    immediate=True,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
@@ -218,6 +224,7 @@ def effect(
 def effect(
     fn: Optional[Callable[[], None]] = None,
     *,
+    immediate=True,
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
@@ -227,6 +234,7 @@ def effect(
         "priority_level": priority_level,
         "debug_trigger": debug_trigger,
         "debug_name": debug_name,
+        "immediate": immediate,
     }
 
     if fn:

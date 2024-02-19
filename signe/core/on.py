@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 import inspect
 from signe.core import Effect
+from signe.core.context import get_executor
 from signe.core.scope import IScope
 from typing import (
     Any,
@@ -102,10 +103,18 @@ def on(
             fn(*states)
 
     scope = scope
-    return Effect(
+    executor = get_executor()
+
+    def trigger_fn():
+        executor.get_current_scheduler().mark_update(effect)
+
+    effect = Effect(
         fn=real_fn,
+        trigger_fn=trigger_fn,
         immediate=not onchanges,
         on=targets,  # type: ignore
         **(effect_kws or {}),
         scope=scope,
     )
+
+    return effect
