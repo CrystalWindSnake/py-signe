@@ -1,4 +1,3 @@
-from typing import Literal
 from enum import IntEnum
 # EffectState = Literal["INIT", "PENDING", "NEED_UPDATE", "RUNNING", "STALE"]
 
