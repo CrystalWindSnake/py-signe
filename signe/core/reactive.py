@@ -19,7 +19,8 @@ from signe.core.deps import GetterDepManager
 from signe.core.protocols import RawableProtocol
 from signe.core.utils import common_not_eq_value
 from .batch import batch
-from weakref import WeakValueDictionary
+from weakref import WeakKeyDictionary, WeakValueDictionary
+import types
 
 T = TypeVar("T")
 P = TypeVar("P")
@@ -71,6 +72,10 @@ def to_raw(obj: T) -> T:
     return obj
 
 
+def _is_proxy(obj):
+    return isinstance(obj, (DictProxy, ListProxy, InstanceProxy))
+
+
 class DictProxy(UserDict):
     def __init__(self, data):
         super().__init__()
@@ -81,7 +86,7 @@ class DictProxy(UserDict):
     def __getitem__(self, key):
         self._dep_manager.tracked(key)
         res = reactive(self.data[key])
-        if isinstance(res, (DictProxy, ListProxy)):
+        if _is_proxy(res):
             self.__nested.add(res)
         return res
 
@@ -153,7 +158,7 @@ class ListProxy(UserList):
     def __getitem__(self, i):
         self._dep_manager.tracked(i)
         res = reactive(self.data[i])
-        if isinstance(res, (DictProxy, ListProxy)):
+        if _is_proxy(res):
             self.__nested.add(res)
         return res
 
@@ -203,30 +208,48 @@ class ListProxy(UserList):
         return self.data
 
 
-def register(
+_instance_proxy_maps: WeakKeyDictionary = WeakKeyDictionary()
+_instance_dep_maps: WeakKeyDictionary = WeakKeyDictionary()
+
+
+def _register_ins(
     proxy: InstanceProxy,
     ins,
 ):
-    _ins_map[proxy] = ins
-    _proxy_dep_map[proxy] = GetterDepManager()
+    _instance_proxy_maps[proxy] = ins
+    _instance_dep_maps[proxy] = GetterDepManager()
 
 
-def track(proxy: InstanceProxy, key):
-    ins = _ins_map.get(proxy)
-    dep_manager = _proxy_dep_map.get(proxy)
-    assert ins
-    assert dep_manager
-
-    dep_manager.tracked(key)
-
-    value = getattr(ins, key)
-
-    return value
+def _is_instance_method(obj, key: str):
+    return isinstance(getattr(obj, key), Callable)
 
 
-def trigger(proxy: InstanceProxy, key, value):
-    ins = _ins_map.get(proxy)
-    dep_manager = _proxy_dep_map.get(proxy)
+def _track_ins(proxy: InstanceProxy, key):
+    ins = _instance_proxy_maps.get(proxy)
+    if _is_instance_method(ins, key):
+        method = getattr(ins, key)
+
+        def replace_method(instance, *args, **kws):
+            method.__func__(instance, *args, **kws)
+            method(*args, **kws)
+
+        fake_method = types.MethodType(replace_method, proxy)
+        return fake_method
+    else:
+        dep_manager = _instance_dep_maps.get(proxy)
+        assert ins
+        assert dep_manager
+
+        dep_manager.tracked(key)
+
+        value = getattr(ins, key)
+
+        return value
+
+
+def _trigger_ins(proxy: InstanceProxy, key, value):
+    ins = _instance_proxy_maps.get(proxy)
+    dep_manager = _instance_dep_maps.get(proxy)
 
     assert ins
     assert dep_manager
@@ -237,11 +260,11 @@ def trigger(proxy: InstanceProxy, key, value):
 
 class InstanceProxy:
     def __init__(self, ins) -> None:
-        register(self, ins)
+        _register_ins(self, ins)
 
     def __getattr__(self, _name: str) -> Any:
-        value = track(self, _name)
+        value = _track_ins(self, _name)
         return value
 
     def __setattr__(self, _name: str, _value: Any) -> None:
-        trigger(self, _name, _value)
+        _trigger_ins(self, _name, _value)
