@@ -8,6 +8,7 @@ from .helper import to_value, is_signal
 from .cleanup import cleanup
 from .reactive import reactive, to_raw
 from .scope import scope
+from .types import TMaybeSignal, TSignal
 
 __all__ = [
     "Signal",
@@ -26,4 +27,6 @@ __all__ = [
     "scope",
     "stop",
     "to_raw",
+    "TMaybeSignal",
+    "TSignal",
 ]

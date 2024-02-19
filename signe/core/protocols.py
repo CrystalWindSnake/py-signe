@@ -101,6 +101,9 @@ class ExecutorProtocol(Protocol):
     def should_track(self) -> bool:
         ...
 
+    def set_default_execution_scheduler(self, execution_scheduler: ExecutionScheduler):
+        ...
+
 
 class SignalResultProtocol(Protocol[_T]):
     @property
