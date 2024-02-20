@@ -219,7 +219,7 @@ class ListProxy(UserList):
         return len(self.data)
 
     def append(self, item: Any) -> None:
-        super().append(item)
+        super().append(to_raw(item))
 
         @batch
         def _():
@@ -227,7 +227,7 @@ class ListProxy(UserList):
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def extend(self, other: Iterable) -> None:
-        super().extend(other)
+        super().extend((to_raw(o) for o in other))
 
         @batch
         def _():
@@ -235,7 +235,7 @@ class ListProxy(UserList):
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def remove(self, item: Any) -> None:
-        super().remove(item)
+        super().remove(to_raw(item))
 
         @batch
         def _():
@@ -257,6 +257,11 @@ class ListProxy(UserList):
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+    def __contains__(self, item) -> bool:
+        result = to_raw(item) in self.data
+        self._dep_manager.tracked("len")
+        return result
 
     def to_raw(self):
         return self.data
