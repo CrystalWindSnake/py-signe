@@ -46,6 +46,18 @@ class SignalOption(Generic[_T]):
 
 
 class Signal(Generic[_T]):
+    __slots__ = (
+        "__id",
+        "_is_shallow",
+        "_value",
+        "_raw_value",
+        "_executor",
+        "_dep_manager",
+        "option",
+        "__debug_name",
+        "_option_comp",
+        "__weakref__",
+    )
     _id_gen = IdGen("Signal")
 
     def __init__(

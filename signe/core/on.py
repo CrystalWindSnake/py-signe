@@ -24,13 +24,13 @@ T = TypeVar("T")
 
 
 class OnGetterModel(Generic[T]):
-    def __init__(self, ref: Union[TSignal, Callable[[], T]], deep=False) -> None:
-        self._is_signal = is_signal(ref)
+    __slots__ = ("_ref", "_fn")
 
+    def __init__(self, ref: Union[TSignal, Callable[[], T]], deep=False) -> None:
         self._ref = ref
 
         # with track
-        if self._is_signal:
+        if is_signal(ref):
 
             def getter():
                 value = self._ref.value
@@ -54,7 +54,7 @@ class OnGetterModel(Generic[T]):
 
 @dataclass(frozen=True)
 class WatchedState:
-    __slot__ = ["current", "previous"]
+    __slot__ = ("current", "previous")
     current: Any
     previous: Any
 
