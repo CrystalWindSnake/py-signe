@@ -84,34 +84,6 @@ class IScope(Protocol):
         ...
 
 
-class ExecutorProtocol(Protocol):
-    execution_scheduler_stack: Stack[ExecutionScheduler]
-
-    def mark_running_caller(self, caller: CallerProtocol):
-        ...
-
-    def reset_running_caller(self, caller: CallerProtocol):
-        ...
-
-    def get_running_caller(self) -> Optional[CallerProtocol]:
-        ...
-
-    def get_current_scheduler(self) -> ExecutionScheduler:
-        ...
-
-    def pause_track(self):
-        ...
-
-    def reset_track(self):
-        ...
-
-    def should_track(self) -> bool:
-        ...
-
-    def set_default_execution_scheduler(self, execution_scheduler: ExecutionScheduler):
-        ...
-
-
 class SignalResultProtocol(Protocol[_T]):
     @property
     def value(self) -> _T:
