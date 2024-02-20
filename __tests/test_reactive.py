@@ -100,7 +100,8 @@ class Test_base_case:
         assert dummy == [100, 199]
 
     def test_ref_value_output_reactive(self):
-        dummy = []
+        dummy1 = []
+        dummy2 = []
 
         data = signal(
             [
@@ -111,9 +112,26 @@ class Test_base_case:
         )
 
         @effect
-        def _():
-            dummy.append(len(data.value))
+        def eff1():
+            dummy1.append(len(data.value))
 
-        assert dummy == [3], f"{dummy=}"
+        @effect
+        def eff2():
+            dummy2.append(data.value[0]["age"])
+
+        assert dummy1 == [3]
+        assert dummy2 == [10]
         data.value.append({"name": "n4", "age": 40})
-        assert dummy == [3, 4], f"{dummy=}"
+        assert dummy1 == [3, 4]
+        # not trigger eff2
+        assert dummy2 == [10]
+
+        data.value[1]["age"] = 99
+        # not trigger eff1 and 2
+        assert dummy1 == [3, 4]
+        assert dummy2 == [10]
+
+        data.value[0]["age"] = 99
+        # not trigger eff2
+        assert dummy1 == [3, 4]
+        assert dummy2 == [10, 99]
