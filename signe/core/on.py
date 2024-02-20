@@ -1,6 +1,6 @@
 from dataclasses import dataclass
 import inspect
-from signe.core import Effect
+from signe.core import Effect, effect
 from signe.core.context import get_executor
 from signe.core.reactive import is_reactive, track_all
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER, IScope
@@ -117,7 +117,7 @@ def on(
     else:
         getters = [OnGetterModel(getter, deep)]  # type: ignore
 
-    targets = getters
+    # targets = getters
 
     def getter_calls():
         return [g.get_value_without_track() for g in getters]
@@ -144,19 +144,17 @@ def on(
     scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
     executor = get_executor()
 
-    def trigger_fn(effect: Effect):
-        executor.get_current_scheduler().mark_update(effect)
+    # def trigger_fn(effect: Effect):
+    #     executor.get_current_scheduler().mark_update(effect)
 
-    effect = Effect(
-        fn=real_fn,
-        trigger_fn=trigger_fn,
-        immediate=not onchanges,
-        on=targets,  # type: ignore
-        **(effect_kws or {}),
-        scope=scope,
-    )
+    @effect(immediate=not onchanges, **(effect_kws or {}), scope=scope)
+    def _():
+        for getter in getters:
+            getter.get_value_with_track()
 
-    return effect
+        executor.pause_track()
+        fn()
+        executor.reset_track()
 
 
 # def on(
