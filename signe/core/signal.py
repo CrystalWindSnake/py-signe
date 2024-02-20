@@ -129,6 +129,8 @@ def signal(
     value: _T,
     comp: Union[TSignalOptionInitComp[_T], bool] = None,
     debug_name: Optional[str] = None,
+    *,
+    is_shallow=False,
 ) -> SignalResultProtocol[_T]:
     ...
 
@@ -138,6 +140,8 @@ def signal(
     value: TMaybeSignal[_T],
     comp: Union[TSignalOptionInitComp[_T], bool] = None,
     debug_name: Optional[str] = None,
+    *,
+    is_shallow=False,
 ) -> SignalResultProtocol[_T]:
     ...
 
