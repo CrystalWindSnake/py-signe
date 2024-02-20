@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from signe.core import Effect
+from signe.core.effect import Effect
 from signe.core.helper import has_changed, get_func_args_count
 from signe.core.reactive import is_reactive, track_all
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER, IScope

@@ -1,4 +1,4 @@
-from signe.core import signal, on, computed, batch, reactive
+from signe import signal, on, computed, batch, reactive
 import utils
 
 

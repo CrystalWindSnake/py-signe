@@ -1,8 +1,5 @@
-from dataclasses import dataclass
 import json
-import _imports
-import pytest
-from signe.core import reactive, effect, computed, signal, stop, to_raw
+from signe import reactive, effect, computed, signal, stop, to_raw
 import utils
 from typing import Callable
 import math
@@ -128,13 +125,13 @@ class Test_effect_basic:
             nonlocal dummy
             dummy = "prop" in obj
 
-        assert dummy == True
+        assert dummy is True
 
         del obj["prop"]
-        assert dummy == False
+        assert dummy is False
 
         obj["prop"] = "new value"
-        assert dummy == True
+        assert dummy is True
 
     def test_observe_func_call_chains(self):
         dummy = None
@@ -262,7 +259,7 @@ class Test_effect_basic:
         effect(hasSpy)
 
         assert getDummy == "value"
-        assert hasDummy == True
+        assert hasDummy is True
 
         obj["prop"] = "value"
 
@@ -270,7 +267,7 @@ class Test_effect_basic:
         assert hasSpy.calledTimes == 1
 
         assert getDummy == "value"
-        assert hasDummy == True
+        assert hasDummy is True
 
     def test_not_observe_raw(self):
         dummy = None

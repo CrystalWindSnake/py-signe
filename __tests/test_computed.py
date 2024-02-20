@@ -1,9 +1,6 @@
-import _imports
-import pytest
 import utils
 
-# from signe import createSignal, effect, computed, cleanup, createReactive, batch
-from signe.core import signal, computed, effect, cleanup, batch
+from signe import signal, computed, effect
 
 
 class Test_computed_case:
