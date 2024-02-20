@@ -91,14 +91,16 @@ class Signal(Generic[_T]):
 
     @value.setter
     def value(self, value: _T):
-        org_value = self._value
+        use_direct = self._is_shallow
+        new_value = value if use_direct else to_raw(value)
 
-        if self._option_comp(org_value, value):  # type: ignore
+        if self._option_comp(self._raw_value, new_value):  # type: ignore
             return
 
-        self._value = value
+        self._raw_value = new_value
+        self._value = new_value if use_direct else to_reactive(new_value)
 
-        self._dep_manager.triggered("value", value, EffectState.NEED_UPDATE)
+        self._dep_manager.triggered("value", new_value, EffectState.NEED_UPDATE)
 
     def __hash__(self) -> int:
         return hash(self.id)

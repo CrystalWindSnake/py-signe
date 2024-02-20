@@ -94,7 +94,7 @@ def reactive(obj: T) -> T:
 
 
 def to_reactive(obj: T) -> T:
-    res = reactive if is_object(obj) else obj
+    res = reactive(obj) if is_object(obj) else obj
     return cast(T, res)
 
 
