@@ -8,6 +8,8 @@ from typing import (
     cast,
     overload,
 )
+from signe.core.computed import Computed
+from signe.core.reactive import to_raw, to_reactive
 from signe.core.consts import EffectState
 from signe.core.idGenerator import IdGen
 
@@ -51,10 +53,14 @@ class Signal(Generic[_T]):
         value: _T,
         option: Optional[SignalOption[_T]] = None,
         debug_name: Optional[str] = None,
+        *,
+        is_shallow: bool,
     ) -> None:
         super().__init__()
         self.__id = Signal._id_gen.new()
-        self._value = value
+        self._is_shallow = is_shallow
+        self._value = value if is_shallow else to_reactive(value)
+        self._raw_value = value if is_shallow else to_raw(value)
 
         self._executor = get_executor()
         self._dep_manager = GetterDepManager()
@@ -138,8 +144,38 @@ def signal(
     value: Union[_T, SignalResultProtocol[_T], TMaybeSignal[_T]],
     comp: Union[TSignalOptionInitComp[_T], bool] = None,
     debug_name: Optional[str] = None,
+    *,
+    is_shallow=False,
 ) -> SignalResultProtocol[_T]:
     if isinstance(value, Signal):
         return value
-    signal = Signal(value, SignalOption(comp), debug_name)
+    signal = Signal(value, SignalOption(comp), debug_name, is_shallow=is_shallow)
     return cast(SignalResultProtocol[_T], signal)
+
+
+def is_signal(obj: TMaybeSignal):
+    """Checks if a value is a signal or computed object.
+
+    Args:
+        obj (_type_): _description_
+    """
+    return isinstance(obj, (Signal, Computed))
+
+
+def to_value(obj: TMaybeSignal):
+    """Normalizes values / signals / getters to values.
+
+    Args:
+        obj (_type_): _description_
+
+    ## Example
+    ```
+    to_value(1)          #    --> 1
+    to_value(signal(1))  #    --> 1
+    ```
+
+    """
+    if is_signal(obj):
+        return obj.value
+
+    return obj

@@ -103,7 +103,8 @@ class Computed(Generic[_T]):
         self._value = new_value
 
     def __repr__(self) -> str:
-        return f"Computed(id ={self.id}, name={self._debug_name}),state={self._effect.state}"
+        state = self._effect.state  # type: ignore
+        return f"Computed(id ={self.id}, name={self._debug_name}),state={state}"
 
 
 _T_computed = ComputedResultProtocol[_T]

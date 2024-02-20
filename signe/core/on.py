@@ -18,7 +18,7 @@ from typing import (
 )
 
 from .types import TGetter, TGetterSignal
-from .helper import is_signal
+from .signal import is_signal
 
 T = TypeVar("T")
 

@@ -1,6 +1,5 @@
 from __future__ import annotations
 from collections import UserDict, UserList
-from datetime import date, datetime
 from typing import (
     Any,
     Callable,
@@ -12,6 +11,7 @@ from typing import (
 )
 from signe.core.consts import EffectState
 from signe.core.deps import GetterDepManager
+from signe.core.helper import is_object
 from signe.core.protocols import RawableProtocol
 from signe.core.utils import common_not_eq_value
 from .context import get_executor
@@ -70,20 +70,7 @@ def track_all(obj, deep=False):
 
 
 def reactive(obj: T) -> T:
-    if isinstance(
-        obj,
-        (
-            str,
-            int,
-            float,
-            date,
-            datetime,
-            ListProxy,
-            DictProxy,
-            Callable,
-            InstanceProxy,
-        ),
-    ):
+    if not is_object(obj) or is_reactive(obj):
         return cast(T, obj)
 
     obj_id = id(obj)
@@ -106,7 +93,12 @@ def reactive(obj: T) -> T:
     # return obj
 
 
-def is_reactive(obj: T) -> bool:
+def to_reactive(obj: T) -> T:
+    res = reactive if is_object(obj) else obj
+    return cast(T, res)
+
+
+def is_reactive(obj: object) -> bool:
     return _is_proxy(obj)
 
 

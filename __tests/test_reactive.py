@@ -3,7 +3,7 @@ import _imports
 import pytest
 import utils
 
-from signe.core import reactive, computed, effect, on, batch
+from signe.core import reactive, computed, effect, on, batch, signal
 
 
 class Test_base_case:
@@ -98,3 +98,22 @@ class Test_base_case:
         assert dummy == [100]
         data[0].inc_agg(99)
         assert dummy == [100, 199]
+
+    def test_ref_value_output_reactive(self):
+        dummy = []
+
+        data = signal(
+            [
+                {"name": "n1", "age": 10},
+                {"name": "n2", "age": 20},
+                {"name": "n3", "age": 30},
+            ]
+        )
+
+        @effect
+        def _():
+            dummy.append(len(data.value))
+
+        assert dummy == [3], f"{dummy=}"
+        data.value.append({"name": "n4", "age": 40})
+        assert dummy == [3, 4], f"{dummy=}"
