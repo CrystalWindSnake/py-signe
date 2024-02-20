@@ -241,3 +241,29 @@ class Test_on:
 
         # change 2
         num1.value = 999
+
+    def test_ref_value_output_reactive(self):
+        records_len = []
+        records_age = []
+
+        data = signal(
+            [
+                {"name": "n1", "age": 10},
+                {"name": "n2", "age": 20},
+                {"name": "n3", "age": 30},
+            ]
+        )
+
+        @on(data)
+        def _():
+            records_len.append(len(data.value))
+            records_age.append(data.value[1]["age"])
+
+        assert records_len == [3]
+        assert records_age == [20]
+        data.value.append({"name": "n4", "age": 40})
+        assert records_age == [20, 20]
+        assert records_len == [3, 4]
+
+        data.value[1]["age"] = 99
+        assert records_age == [20, 20, 99]

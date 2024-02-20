@@ -17,6 +17,7 @@ from typing import (
 from signe.core.idGenerator import IdGen
 
 from signe.core.protocols import GetterProtocol, IScope, PauseTrackableProtocol
+from signe.core.reactive import is_reactive, track_all_deep
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER
 from .consts import EffectState
 from .context import get_executor
@@ -73,23 +74,27 @@ class Effect(Generic[_T]):
 
         if not self.auto_collecting_dep:
             assert on
-
-            self._executor.mark_running_caller(self)
-            self.auto_collecting_dep = True
-
-            for getter in on:
-                if isinstance(getter, PauseTrackableProtocol):
-                    getter.enable_track()
-                    getter.value
-                    getter.disable_track()
-                else:
-                    getter.value
-
-            self.auto_collecting_dep = False
-            self._executor.reset_running_caller(self)
+            self.__track_with_on_args(on)
 
         if immediate:
             self.update()
+
+    def __track_with_on_args(self, targets: List[GetterProtocol]):
+        self._executor.mark_running_caller(self)
+        self.auto_collecting_dep = True
+
+        for getter in targets:
+            if isinstance(getter, PauseTrackableProtocol):
+                getter.enable_track()
+                getter.value
+                getter.disable_track()
+            else:
+                value = getter.value
+                if is_reactive(value):
+                    track_all_deep(value)
+
+        self.auto_collecting_dep = False
+        self._executor.reset_running_caller(self)
 
     @property
     def id(self):
