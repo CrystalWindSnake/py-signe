@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import Dict, TYPE_CHECKING
+from typing import Callable, Dict, TYPE_CHECKING
 
 from signe.core.consts import EffectState
 from .collections import Stack
@@ -53,7 +53,7 @@ class Executor:
 
 class ExecutionScheduler:
     def __init__(self) -> None:
-        self._effect_updates: Dict[Effect, None] = {}
+        self._effect_updates: Dict[Callable[[], None], None] = {}
         self.__running = False
         self.pause_should_run_stack = 0
 
@@ -67,8 +67,8 @@ class ExecutionScheduler:
     def reset_scheduling(self):
         self.pause_should_run_stack -= 1
 
-    def mark_update(self, effect: Effect):
-        self._effect_updates[effect] = None
+    def mark_update(self, fn: Callable[[], None]):
+        self._effect_updates[fn] = None
 
     def run(self):
         count = 0
@@ -85,12 +85,13 @@ class ExecutionScheduler:
             self.__running = False
 
     def _run_effect_updates(self):
-        effects = tuple(self._effect_updates.keys())
+        fns = tuple(self._effect_updates.keys())
         self._effect_updates.clear()
-        for effect in effects:
-            effect.calc_state()
-            if effect.state <= EffectState.NEED_UPDATE:
-                effect.update()
+        for fn in fns:
+            fn()
+            # effect.calc_state()
+            # if effect.state <= EffectState.NEED_UPDATE:
+            #     effect.update()
 
 
 class BatchExecutionScheduler(ExecutionScheduler):

@@ -11,9 +11,8 @@ from typing import (
 )
 from signe.core.consts import EffectState
 from signe.core.deps import GetterDepManager
-from signe.core.helper import is_object
+from signe.core.helper import has_changed, is_object
 from signe.core.protocols import RawableProtocol
-from signe.core.utils import common_not_eq_value
 from .context import get_executor
 from .batch import batch
 from weakref import WeakKeyDictionary, WeakValueDictionary
@@ -141,7 +140,7 @@ class DictProxy(UserDict):
                 org_value = self.data[key]
                 self.data[key] = item
 
-                if common_not_eq_value(org_value, item):
+                if has_changed(org_value, item):
                     self._dep_manager.triggered(key, item, EffectState.NEED_UPDATE)
 
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
@@ -202,7 +201,7 @@ class ListProxy(UserList):
         org_value = self.data[i]
         self.data[i] = item
 
-        if common_not_eq_value(org_value, item):
+        if has_changed(org_value, item):
 
             @batch
             def _():

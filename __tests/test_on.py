@@ -82,7 +82,7 @@ class Test_on:
         data = reactive([1, 2, 3, 4])
         s = signal(1)
 
-        @on(lambda: data)
+        @on(lambda: data, deep=True)
         def _():
             dummy.append(data[0])
             s.value
@@ -98,7 +98,7 @@ class Test_on:
         data = reactive({"x": 1, "y": 2})
         s = signal(1)
 
-        @on(lambda: data)
+        @on(lambda: data, deep=True)
         def _():
             dummy.append(data["x"])
             s.value
@@ -141,7 +141,7 @@ class Test_on:
         data = reactive(Model())
         s = signal(1)
 
-        @on(lambda: data)
+        @on(lambda: data, deep=True)
         def _():
             dummy.append(data.x)
             s.value
@@ -208,11 +208,11 @@ class Test_on:
         @on([num1, num2, cp_total], effect_kws={"debug_name": "on2"})
         def _on2(s1, s2, s3):
             if run_state_on2.time == 0:
-                assert s1.previous == 1
+                assert s1.previous is None
                 assert s1.current == 1
-                assert s2.previous == 2
+                assert s2.previous is None
                 assert s2.current == 2
-                assert s3.previous == 3
+                assert s3.previous is None
                 assert s3.current == 3
 
             if run_state_on2.time == 1:
@@ -272,8 +272,19 @@ class Test_on:
         data.value.append({"name": "n4", "age": 40})
         assert records_len == [3, 4]
         assert records_age == [20, 20]
-        assert records_age_without_deep == [20, 20]
+        assert records_age_without_deep == [20]
 
         data.value[1]["age"] = 99
+        assert records_len == [3, 4, 4]
         assert records_age == [20, 20, 99]
-        assert records_age_without_deep == [20, 20]
+        assert records_age_without_deep == [20]
+
+        #
+        data.value = [
+            {"name": "n1", "age": 10},
+            {"name": "n2", "age": 666},
+        ]
+
+        assert records_age == [20, 20, 99, 666]
+        assert records_len == [3, 4, 4, 2]
+        assert records_age_without_deep == [20, 666]

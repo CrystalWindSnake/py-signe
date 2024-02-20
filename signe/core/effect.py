@@ -21,6 +21,7 @@ from signe.core.reactive import is_reactive, track_all
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER
 from .consts import EffectState
 from .context import get_executor
+from functools import partial
 
 if TYPE_CHECKING:
     from signe.core.deps import Dep
@@ -40,7 +41,8 @@ class Effect(Generic[_T]):
         self,
         fn: Callable[[], _T],
         trigger_fn: Optional[Callable[[Effect], None]] = None,
-        immediate=True,
+        scheduler_fn: Optional[Callable[[Effect], None]] = None,
+        # immediate=True,
         on: Optional[List[OnGetterProtocol]] = None,
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
@@ -54,13 +56,14 @@ class Effect(Generic[_T]):
         self._active = True
         self._fn = fn
         self._trigger_fn = trigger_fn
+        self._scheduler_fn = scheduler_fn
         self._upstream_refs: Set[Dep] = set()
         self._debug_name = debug_name
         self._debug_trigger = debug_trigger
 
         self.auto_collecting_dep = not bool(on)
 
-        self._state: EffectState = state or EffectState.STALE
+        self._state: EffectState = state or EffectState.NEED_UPDATE
         self._cleanups: List[Callable[[], None]] = []
 
         if scope:
@@ -71,23 +74,6 @@ class Effect(Generic[_T]):
         running_caller = self._executor.get_running_caller()
         if running_caller and running_caller.is_effect:
             cast(Effect, running_caller).made_sub_effect(self)
-
-        if not self.auto_collecting_dep:
-            assert on
-            self.__track_with_on_args(on)
-
-        if immediate:
-            self.update()
-
-    def __track_with_on_args(self, targets: List[OnGetterProtocol]):
-        self._executor.mark_running_caller(self)
-        self.auto_collecting_dep = True
-
-        for getter in targets:
-            getter.get_value_with_track()
-
-        self.auto_collecting_dep = False
-        self._executor.reset_running_caller(self)
 
     @property
     def id(self):
@@ -120,6 +106,7 @@ class Effect(Generic[_T]):
         # self._executor.reset_track()
 
     def is_need_update(self):
+        self.calc_state()
         return self.state <= EffectState.NEED_UPDATE
 
     def made_sub_effect(self, sub: Effect):
@@ -132,6 +119,11 @@ class Effect(Generic[_T]):
 
         if self._trigger_fn:
             self._trigger_fn(self)
+
+        if self._scheduler_fn:
+            self._executor.get_current_scheduler().mark_update(
+                partial(self._scheduler_fn, self)
+            )
 
         scheduler.reset_scheduling()
 
@@ -262,13 +254,16 @@ def effect(
             fn = fn._fn
 
         scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
-        executor = get_executor()
+        # executor = get_executor()
 
-        def trigger_fn(effect: Effect):
+        def scheduler_fn(effect: Effect):
             if effect.is_need_update():
-                executor.get_current_scheduler().mark_update(effect)
+                effect.update()
 
-        res = Effect(fn, trigger_fn, **kws, scope=scope)
+        kws.pop("immediate")
+        res = Effect(fn, scheduler_fn=scheduler_fn, **kws, scope=scope)
+        if immediate:
+            res.update()
         return res
     else:
 
@@ -276,6 +271,10 @@ def effect(
             return effect(fn, **kws, scope=scope)
 
         return wrap
+
+
+def __nothing(_):
+    pass
 
 
 def stop(effect: Effect):

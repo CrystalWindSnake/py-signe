@@ -1,7 +1,8 @@
 from dataclasses import dataclass
 import inspect
-from signe.core import Effect, effect
+from signe.core import Effect
 from signe.core.context import get_executor
+from signe.core.helper import has_changed
 from signe.core.reactive import is_reactive, track_all
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER, IScope
 from typing import (
@@ -33,29 +34,24 @@ class OnGetterModel(Generic[T]):
         # with track
         if self._is_signal:
 
-            def getter(track=True):
+            def getter():
                 value = self._ref.value
-                if is_reactive(value) and track:
+                if is_reactive(value):
                     track_all(value, deep)
-
                 return value
 
             self._fn = getter
         else:
 
-            def getter_reactive_fn(track=True):
+            def getter_reactive_fn():
                 obj = cast(Callable, ref)()
-                if track:
-                    track_all(obj, deep)
+                track_all(obj, deep)
                 return obj
 
             self._fn = getter_reactive_fn
 
-    def get_value_with_track(self):
+    def get_value(self):
         return self._fn()
-
-    def get_value_without_track(self):
-        return self._fn(track=False)
 
 
 @dataclass(frozen=True)
@@ -70,7 +66,7 @@ def _get_func_args_count(fn):
 
 @overload
 def on(
-    getter: Union[TGetter, Sequence[TGetter]],
+    source: Union[TGetter, Sequence[TGetter]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -83,7 +79,7 @@ def on(
 
 @overload
 def on(
-    getter: Union[TGetter, Sequence[TGetter]],
+    source: Union[TGetter, Sequence[TGetter]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -94,7 +90,7 @@ def on(
 
 
 def on(
-    getter: Union[TGetter, Sequence[TGetter]],
+    source: Union[TGetter, Sequence[TGetter]],
     fn: Optional[Callable[..., None]] = None,
     *,
     onchanges=False,
@@ -107,54 +103,55 @@ def on(
     if fn is None:
 
         def wrap_cp(fn: Callable[[], T]):
-            return on(getter, fn, **call_kws, scope=scope)  # type: ignore
+            return on(source, fn, **call_kws, scope=scope)  # type: ignore
 
         return wrap_cp
 
     getters: List[OnGetterModel] = []
-    if isinstance(getter, Sequence):
-        getters = [OnGetterModel(g, deep) for g in getter]  # type: ignore
+    if isinstance(source, Sequence):
+        getters = [OnGetterModel(g, deep) for g in source]  # type: ignore
     else:
-        getters = [OnGetterModel(getter, deep)]  # type: ignore
+        getters = [OnGetterModel(source, deep)]  # type: ignore
+
+    def getter():
+        return [g.get_value() for g in getters]
 
     # targets = getters
 
-    def getter_calls():
-        return [g.get_value_without_track() for g in getters]
+    # def getter_calls():
+    #     return [t.get_value_without_track() for t in targets]
 
     args_count = _get_func_args_count(fn)
-    prev_values = getter_calls()
+    prev_values = [None] * len(getters)
 
-    def real_fn():
+    def scheduler_fn(effect: Effect):
         nonlocal prev_values
+        if (not effect._active) or (not effect.is_need_update()):
+            return
 
-        current_values = getter_calls()  # type: ignore
+        new_values = effect.update()
+        if deep or any(has_changed(n, v) for n, v in zip(new_values, prev_values)):
+            states = (
+                WatchedState(cur, prev)
+                for cur, prev in zip(new_values, prev_values or new_values)
+            )
+            if args_count == 0:
+                fn()
+            else:
+                fn(*states)
 
-        states = (
-            WatchedState(cur, prev)
-            for cur, prev in zip(current_values, prev_values or current_values)
-        )
-
-        prev_values = current_values
-        if args_count == 0:
-            fn()
-        else:
-            fn(*states)
+        prev_values = new_values
 
     scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
-    executor = get_executor()
 
-    # def trigger_fn(effect: Effect):
-    #     executor.get_current_scheduler().mark_update(effect)
+    effect = Effect(
+        getter, scheduler_fn=scheduler_fn, **(effect_kws or {}), scope=scope
+    )
 
-    @effect(immediate=not onchanges, **(effect_kws or {}), scope=scope)
-    def _():
-        for getter in getters:
-            getter.get_value_with_track()
-
-        executor.pause_track()
-        fn()
-        executor.reset_track()
+    if onchanges:
+        prev_values = effect.update()
+    else:
+        scheduler_fn(effect)
 
 
 # def on(
@@ -211,7 +208,7 @@ def on(
 #     def trigger_fn(effect: Effect):
 #         executor.get_current_scheduler().mark_update(effect)
 
-#     effect = Effect(
+#     res = Effect(
 #         fn=real_fn,
 #         trigger_fn=trigger_fn,
 #         immediate=not onchanges,
