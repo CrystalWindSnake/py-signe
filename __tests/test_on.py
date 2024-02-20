@@ -288,3 +288,31 @@ class Test_on:
         assert records_age == [20, 20, 99, 666]
         assert records_len == [3, 4, 4, 2]
         assert records_age_without_deep == [20, 666]
+
+    def test_ref_value_dynamic_addition_list(self):
+        records = []
+        records_calc = []
+
+        data = signal([])
+
+        @on(data, deep=True)
+        def _():
+            records.append(len(data.value))
+            records_calc.append(sum(r["age"] for r in data.value))
+
+        assert records == [0]
+        assert records_calc == [0]
+
+        data.value.extend(
+            [
+                {"name": "n1", "age": 10},
+                {"name": "n2", "age": 20},
+                {"name": "n3", "age": 30},
+            ]
+        )
+
+        assert records == [0, 3]
+        assert records_calc == [0, 60]
+
+        data.value[0]["age"] = 66
+        assert records_calc == [0, 60, 66 + 20 + 30]
