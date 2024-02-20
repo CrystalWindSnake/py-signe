@@ -180,8 +180,8 @@ class Effect(Generic[_T]):
         self._clear_all_deps()
         self._exec_cleanups()
         self._dispose_sub_effects()
-        del self._fn
-        del self._trigger_fn
+        # del self._fn
+        # del self._trigger_fn
 
     def _dispose_sub_effects(self):
         for sub in self._sub_effects:

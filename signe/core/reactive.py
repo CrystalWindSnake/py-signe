@@ -211,8 +211,11 @@ class ListProxy(UserList):
         self.data[i] = item
 
         if common_not_eq_value(org_value, item):
-            self._dep_manager.triggered(i, item, EffectState.NEED_UPDATE)
-            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+            @batch
+            def _():
+                self._dep_manager.triggered(i, item, EffectState.NEED_UPDATE)
+                self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def __iter__(self) -> Iterator:
         self._dep_manager.tracked("__iter__")
@@ -226,28 +229,42 @@ class ListProxy(UserList):
     def append(self, item: Any) -> None:
         super().append(item)
 
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def extend(self, other: Iterable) -> None:
         super().extend(other)
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def remove(self, item: Any) -> None:
         super().remove(item)
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def pop(self, i: int = -1) -> Any:
         super().pop(i)
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def clear(self) -> None:
         super().clear()
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def to_raw(self):
         return self.data
