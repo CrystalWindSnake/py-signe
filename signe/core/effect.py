@@ -116,7 +116,7 @@ class Effect(Generic[_T]):
             self._trigger_fn(self)
 
         if self._scheduler_fn:
-            self._executor.get_current_scheduler().mark_update(
+            self._executor.get_current_scheduler().push_scheduler_fn(
                 partial(self._scheduler_fn, self)
             )
 
