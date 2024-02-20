@@ -41,7 +41,10 @@ def track_all_deep(obj):
                 if is_reactive(value):
                     stack.append(value)
         elif isinstance(current, InstanceProxy):
-            pass
+            for key in _get_data_fields(current):
+                value = getattr(current, key)
+                if is_reactive(value):
+                    stack.append(value)
         else:
             pass
 
@@ -56,6 +59,14 @@ def track_all(obj, deep=False):
             track_all_deep(obj)
         else:
             iter(obj)
+    elif isinstance(obj, (InstanceProxy)):
+        if deep:
+            track_all_deep(obj)
+        else:
+            for key in _get_data_fields(obj):
+                getattr(obj, key)
+    else:
+        pass
 
 
 def reactive(obj: T) -> T:
@@ -290,6 +301,11 @@ def _trigger_ins(proxy: InstanceProxy, key, value):
 
     setattr(ins, key, value)
     dep_manager.triggered(key, value, EffectState.NEED_UPDATE)
+
+
+def _get_data_fields(proxy: InstanceProxy):
+    ins = _instance_proxy_maps.get(proxy)
+    return [f for f in dir(ins) if f[0] != "_"]
 
 
 class InstanceProxy:
