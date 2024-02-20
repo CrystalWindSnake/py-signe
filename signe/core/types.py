@@ -7,4 +7,4 @@ _T = TypeVar("_T")
 TSignal = SignalResultProtocol[_T]
 TGetterSignal = Union[SignalResultProtocol[_T], ComputedResultProtocol[_T]]
 TGetter = Union[TGetterSignal[_T], Callable[[], _T]]
-TMaybeSignal = Union[_T, TGetterSignal[_T]]
+TMaybeSignal = Union[_T, TGetter[_T]]

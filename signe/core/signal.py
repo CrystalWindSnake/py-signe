@@ -16,7 +16,7 @@ from signe.core.idGenerator import IdGen
 from signe.core.deps import GetterDepManager
 from signe.core.protocols import SignalResultProtocol
 from .context import get_executor
-from .types import TMaybeSignal
+from .types import TMaybeSignal, TSignal
 
 _T = TypeVar("_T")
 
@@ -180,7 +180,7 @@ def is_signal(obj: TMaybeSignal):
     return isinstance(obj, (Signal, Computed))
 
 
-def to_value(obj: TMaybeSignal):
+def to_value(obj: TMaybeSignal[_T]) -> _T:
     """Normalizes values / signals / getters to values.
 
     Args:
@@ -194,6 +194,9 @@ def to_value(obj: TMaybeSignal):
 
     """
     if is_signal(obj):
-        return obj.value
+        return cast(TSignal, obj).value
 
-    return obj
+    # if isinstance(obj, Callable):
+    #     return obj()
+
+    return cast(_T, obj)
