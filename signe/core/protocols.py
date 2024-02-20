@@ -20,11 +20,11 @@ _T = TypeVar("_T")
 
 
 @runtime_checkable
-class PauseTrackableProtocol(Protocol):
-    def enable_track(self):
+class OnGetterProtocol(Protocol):
+    def get_value_with_track(self):
         ...
 
-    def disable_track(self):
+    def get_value_without_track(self):
         ...
 
 

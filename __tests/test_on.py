@@ -246,6 +246,8 @@ class Test_on:
         records_len = []
         records_age = []
 
+        records_age_without_deep = []
+
         data = signal(
             [
                 {"name": "n1", "age": 10},
@@ -254,16 +256,24 @@ class Test_on:
             ]
         )
 
-        @on(data)
+        @on(data, deep=True)
         def _():
             records_len.append(len(data.value))
             records_age.append(data.value[1]["age"])
 
+        # deep=False
+        @on(data)
+        def _():
+            records_age_without_deep.append(data.value[1]["age"])
+
         assert records_len == [3]
         assert records_age == [20]
+        assert records_age_without_deep == [20]
         data.value.append({"name": "n4", "age": 40})
-        assert records_age == [20, 20]
         assert records_len == [3, 4]
+        assert records_age == [20, 20]
+        assert records_age_without_deep == [20, 20]
 
         data.value[1]["age"] = 99
         assert records_age == [20, 20, 99]
+        assert records_age_without_deep == [20, 20]

@@ -16,8 +16,8 @@ from typing import (
 
 from signe.core.idGenerator import IdGen
 
-from signe.core.protocols import GetterProtocol, IScope, PauseTrackableProtocol
-from signe.core.reactive import is_reactive, track_all_deep
+from signe.core.protocols import GetterProtocol, IScope, OnGetterProtocol
+from signe.core.reactive import is_reactive, track_all
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER
 from .consts import EffectState
 from .context import get_executor
@@ -41,7 +41,7 @@ class Effect(Generic[_T]):
         fn: Callable[[], _T],
         trigger_fn: Optional[Callable[[Effect], None]] = None,
         immediate=True,
-        on: Optional[List[GetterProtocol]] = None,
+        on: Optional[List[OnGetterProtocol]] = None,
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
@@ -79,19 +79,12 @@ class Effect(Generic[_T]):
         if immediate:
             self.update()
 
-    def __track_with_on_args(self, targets: List[GetterProtocol]):
+    def __track_with_on_args(self, targets: List[OnGetterProtocol]):
         self._executor.mark_running_caller(self)
         self.auto_collecting_dep = True
 
         for getter in targets:
-            if isinstance(getter, PauseTrackableProtocol):
-                getter.enable_track()
-                getter.value
-                getter.disable_track()
-            else:
-                value = getter.value
-                if is_reactive(value):
-                    track_all_deep(value)
+            getter.get_value_with_track()
 
         self.auto_collecting_dep = False
         self._executor.reset_running_caller(self)

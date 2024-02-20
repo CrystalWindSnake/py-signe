@@ -12,39 +12,50 @@ from typing import (
     TypeVar,
     Callable,
     Union,
+    cast,
     overload,
     Optional,
     Generic,
 )
 
-from .types import TGetter, TGetterSignal
+from .types import TGetter, TGetterSignal, TSignal
 from .signal import is_signal
 
 T = TypeVar("T")
 
 
-class GetterModel(Generic[T]):
-    def __init__(self, fn: Callable[[], T], deep=False) -> None:
-        assert isinstance(fn, Callable)
-        self._fn = fn
-        self._deep = deep
-        self.__track = False
+class OnGetterModel(Generic[T]):
+    def __init__(self, ref: Union[TSignal, Callable[[], T]], deep=False) -> None:
+        self._is_signal = is_signal(ref)
 
-    @property
-    def value(self):
-        obj = self._fn()
-        assert is_reactive(obj)
+        self._ref = ref
 
-        if self.__track:
-            track_all(obj, self._deep)
+        # with track
+        if self._is_signal:
 
-        return obj
+            def getter(track=True):
+                value = self._ref.value
+                if is_reactive(value) and track:
+                    track_all(value, deep)
 
-    def enable_track(self):
-        self.__track = True
+                return value
 
-    def disable_track(self):
-        self.__track = False
+            self._fn = getter
+        else:
+
+            def getter_reactive_fn(track=True):
+                obj = cast(Callable, ref)()
+                if track:
+                    track_all(obj, deep)
+                return obj
+
+            self._fn = getter_reactive_fn
+
+    def get_value_with_track(self):
+        return self._fn()
+
+    def get_value_without_track(self):
+        return self._fn(track=False)
 
 
 @dataclass(frozen=True)
@@ -100,16 +111,16 @@ def on(
 
         return wrap_cp
 
-    getters: List[TGetterSignal] = []
+    getters: List[OnGetterModel] = []
     if isinstance(getter, Sequence):
-        getters = [g if is_signal(g) else GetterModel(g, deep) for g in getter]  # type: ignore
+        getters = [OnGetterModel(g, deep) for g in getter]  # type: ignore
     else:
-        getters = [getter if is_signal(getter) else GetterModel(getter, deep)]  # type: ignore
+        getters = [OnGetterModel(getter, deep)]  # type: ignore
 
     targets = getters
 
     def getter_calls():
-        return [g.value for g in getters]
+        return [g.get_value_without_track() for g in getters]
 
     args_count = _get_func_args_count(fn)
     prev_values = getter_calls()
@@ -146,3 +157,8 @@ def on(
     )
 
     return effect
+
+
+def _to_getter_fn(obj, deep: bool):
+    if is_signal(obj):
+        return lambda: obj.value
