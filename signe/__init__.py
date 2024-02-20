@@ -7,7 +7,7 @@ from signe.core.on import on, WatchedState
 from signe.core.cleanup import cleanup
 from signe.core.reactive import reactive, to_raw, is_reactive
 from signe.core.scope import scope
-from signe.core.types import TMaybeSignal, TGetterSignal, TSignal
+from signe.core.types import TMaybeSignal, TGetterSignal, TSignal, TGetter
 
 __all__ = [
     "Signal",
@@ -28,6 +28,7 @@ __all__ = [
     "to_raw",
     "TMaybeSignal",
     "TGetterSignal",
+    "TGetter",
     "TSignal",
     "WatchedState",
     "is_reactive",
