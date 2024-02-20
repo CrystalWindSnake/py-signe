@@ -126,6 +126,7 @@ class DictProxy(UserDict):
         return res
 
     def __setitem__(self, key, item):
+        item = to_raw(item)
         is_new = key not in self.data
 
         @batch
@@ -198,6 +199,7 @@ class ListProxy(UserList):
         return res
 
     def __setitem__(self, i, item):
+        item = to_raw(item)
         org_value = self.data[i]
         self.data[i] = item
 
