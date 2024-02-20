@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import (
     Callable,
     Generic,
-    Optional,
     Protocol,
     TypeVar,
     TYPE_CHECKING,
@@ -11,10 +10,8 @@ from typing import (
 
 
 if TYPE_CHECKING:
-    from signe.core.collections import Stack
     from signe.core.deps import Dep
     from .consts import EffectState
-    from .runtime import ExecutionScheduler
 
 _T = TypeVar("_T")
 
