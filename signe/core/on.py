@@ -157,8 +157,3 @@ def on(
     )
 
     return effect
-
-
-def _to_getter_fn(obj, deep: bool):
-    if is_signal(obj):
-        return lambda: obj.value
