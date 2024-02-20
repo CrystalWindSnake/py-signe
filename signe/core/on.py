@@ -1,8 +1,6 @@
 from dataclasses import dataclass
-import inspect
 from signe.core import Effect
-from signe.core.context import get_executor
-from signe.core.helper import has_changed
+from signe.core.helper import has_changed, get_func_args_count
 from signe.core.reactive import is_reactive, track_all
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER, IScope
 from typing import (
@@ -56,12 +54,9 @@ class OnGetterModel(Generic[T]):
 
 @dataclass(frozen=True)
 class WatchedState:
+    __slot__ = ["current", "previous"]
     current: Any
     previous: Any
-
-
-def _get_func_args_count(fn):
-    return len(inspect.getfullargspec(fn).args)
 
 
 @overload
@@ -121,7 +116,7 @@ def on(
     # def getter_calls():
     #     return [t.get_value_without_track() for t in targets]
 
-    args_count = _get_func_args_count(fn)
+    args_count = get_func_args_count(fn)
     prev_values = [None] * len(getters)
 
     def scheduler_fn(effect: Effect):
@@ -152,69 +147,3 @@ def on(
         prev_values = effect.update()
     else:
         scheduler_fn(effect)
-
-
-# def on(
-#     getter: Union[TGetter, Sequence[TGetter]],
-#     fn: Optional[Callable[..., None]] = None,
-#     *,
-#     onchanges=False,
-#     effect_kws: Optional[Dict[str, Any]] = None,
-#     deep=False,
-#     scope: Optional[IScope] = None,
-# ):
-#     call_kws = {"onchanges": onchanges, "effect_kws": effect_kws, "deep": deep}
-
-#     if fn is None:
-
-#         def wrap_cp(fn: Callable[[], T]):
-#             return on(getter, fn, **call_kws, scope=scope)  # type: ignore
-
-#         return wrap_cp
-
-#     getters: List[OnGetterModel] = []
-#     if isinstance(getter, Sequence):
-#         getters = [OnGetterModel(g, deep) for g in getter]  # type: ignore
-#     else:
-#         getters = [OnGetterModel(getter, deep)]  # type: ignore
-
-#     targets = getters
-
-#     def getter_calls():
-#         return [g.get_value_without_track() for g in getters]
-
-#     args_count = _get_func_args_count(fn)
-#     prev_values = getter_calls()
-
-#     def real_fn():
-#         nonlocal prev_values
-
-#         current_values = getter_calls()  # type: ignore
-
-#         states = (
-#             WatchedState(cur, prev)
-#             for cur, prev in zip(current_values, prev_values or current_values)
-#         )
-
-#         prev_values = current_values
-#         if args_count == 0:
-#             fn()
-#         else:
-#             fn(*states)
-
-#     scope = scope
-#     executor = get_executor()
-
-#     def trigger_fn(effect: Effect):
-#         executor.get_current_scheduler().mark_update(effect)
-
-#     res = Effect(
-#         fn=real_fn,
-#         trigger_fn=trigger_fn,
-#         immediate=not onchanges,
-#         on=targets,  # type: ignore
-#         **(effect_kws or {}),
-#         scope=scope,
-#     )
-
-#     return effect

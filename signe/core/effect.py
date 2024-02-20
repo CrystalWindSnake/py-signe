@@ -16,8 +16,7 @@ from typing import (
 
 from signe.core.idGenerator import IdGen
 
-from signe.core.protocols import GetterProtocol, IScope, OnGetterProtocol
-from signe.core.reactive import is_reactive, track_all
+from signe.core.protocols import IScope
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER
 from .consts import EffectState
 from .context import get_executor
@@ -42,8 +41,6 @@ class Effect(Generic[_T]):
         fn: Callable[[], _T],
         trigger_fn: Optional[Callable[[Effect], None]] = None,
         scheduler_fn: Optional[Callable[[Effect], None]] = None,
-        # immediate=True,
-        on: Optional[List[OnGetterProtocol]] = None,
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
@@ -60,8 +57,6 @@ class Effect(Generic[_T]):
         self._upstream_refs: Set[Dep] = set()
         self._debug_name = debug_name
         self._debug_trigger = debug_trigger
-
-        self.auto_collecting_dep = not bool(on)
 
         self._state: EffectState = state or EffectState.NEED_UPDATE
         self._cleanups: List[Callable[[], None]] = []
@@ -142,8 +137,7 @@ class Effect(Generic[_T]):
             self._executor.mark_running_caller(self)
             self._state = EffectState.RUNNING
 
-            if self.auto_collecting_dep:
-                self._clear_all_deps()
+            self._clear_all_deps()
 
             self._dispose_sub_effects()
             result = self._fn()
@@ -170,8 +164,6 @@ class Effect(Generic[_T]):
         self._clear_all_deps()
         self._exec_cleanups()
         self._dispose_sub_effects()
-        # del self._fn
-        # del self._trigger_fn
 
     def _dispose_sub_effects(self):
         for sub in self._sub_effects:
@@ -271,10 +263,6 @@ def effect(
             return effect(fn, **kws, scope=scope)
 
         return wrap
-
-
-def __nothing(_):
-    pass
 
 
 def stop(effect: Effect):

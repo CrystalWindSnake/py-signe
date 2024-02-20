@@ -51,8 +51,6 @@ class GetterProtocol(Protocol[_T]):  # type: ignore
 
 
 class CallerProtocol(Protocol[_T]):  # type: ignore
-    auto_collecting_dep: bool
-
     @property
     def id(self) -> str:
         ...
