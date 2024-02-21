@@ -17,6 +17,8 @@ from signe.core.deps import GetterDepManager
 from signe.core.protocols import SignalResultProtocol
 from .context import get_executor
 from .types import TMaybeSignal, TSignal
+from collections.abc import Hashable
+import operator
 
 _T = TypeVar("_T")
 
@@ -27,7 +29,10 @@ TSignalOptionInitComp = Optional[Union[bool, TSignalOptionComp[TComp]]]
 
 
 def _eq_base_comp(old, new):
-    return old == new
+    if isinstance(old, Hashable) and isinstance(new, Hashable):
+        return operator.eq(old, new)
+
+    return old is new
 
 
 def _always_false_comp(old, new):

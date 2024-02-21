@@ -158,3 +158,22 @@ class Test_to_raw:
         s = signal(data)
 
         assert to_raw(s.value[0]) == data[0]
+
+    def test_shallow(self):
+        dummy = []
+
+        data = signal(
+            [{"name": "n1"}],
+            is_shallow=True,
+        )
+
+        @effect
+        def _():
+            dummy.append(data.value[0]["name"])
+
+        # no effect
+        data.value[0]["name"] = "new"
+        assert dummy == ["n1"]
+
+        data.value = [{"name": "new"}]
+        assert dummy == ["n1", "new"]
