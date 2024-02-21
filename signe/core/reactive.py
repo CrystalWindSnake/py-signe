@@ -104,6 +104,9 @@ def is_reactive(obj: object) -> bool:
 def to_raw(obj: T) -> T:
     if isinstance(obj, RawableProtocol):
         return obj.to_raw()
+
+    if isinstance(obj, InstanceProxy):
+        return _instance_proxy_maps.get(obj)
     return obj
 
 

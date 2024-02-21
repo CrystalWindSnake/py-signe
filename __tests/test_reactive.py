@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from signe import reactive, computed, effect, signal
+from signe import reactive, computed, effect, signal, to_raw
 
 
 class Test_base_case:
@@ -131,3 +131,30 @@ class Test_base_case:
         # not trigger eff2
         assert dummy1 == [3, 4]
         assert dummy2 == [10, 99]
+
+
+class Test_to_raw:
+    def test_dict_list(self):
+        data = [{}]
+        s = signal(data)
+
+        assert to_raw(s.value[0]) == data[0]
+
+    def test_class_list(self):
+        class Model:
+            pass
+
+        data = [Model()]
+        s = signal(data)
+
+        assert to_raw(s.value[0]) == data[0]
+
+    def test_dataclass_list(self):
+        @dataclass
+        class Model:
+            pass
+
+        data = [Model()]
+        s = signal(data)
+
+        assert to_raw(s.value[0]) == data[0]
