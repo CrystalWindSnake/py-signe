@@ -1,5 +1,6 @@
 from dataclasses import dataclass
 from signe import reactive, computed, effect, signal, to_raw
+from . import utils
 
 
 class Test_base_case:
@@ -176,4 +177,37 @@ class Test_to_raw:
         assert dummy == ["n1"]
 
         data.value = [{"name": "new"}]
+        assert dummy == ["n1", "new"]
+
+    @utils.mark_todo
+    def test_signal_dict_trigger_by_setattr(self):
+        dummy = []
+
+        data = signal(
+            [{"name": "n1"}],
+        )
+
+        @effect
+        def _():
+            dummy.append(data.value[0]["name"])
+
+        setattr(data.value[0], "name", "new")
+        assert dummy == ["n1", "new"]
+
+    def test_signal_class_trigger_by_setattr(self):
+        @dataclass
+        class Model:
+            name: str
+
+        dummy = []
+
+        data = signal(
+            [Model("n1")],
+        )
+
+        @effect
+        def _():
+            dummy.append(data.value[0].name)
+
+        setattr(data.value[0], "name", "new")
         assert dummy == ["n1", "new"]
