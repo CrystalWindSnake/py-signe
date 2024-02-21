@@ -1,5 +1,5 @@
 from signe import signal, on, computed, batch, reactive
-import utils
+from . import utils
 
 
 class Test_on:

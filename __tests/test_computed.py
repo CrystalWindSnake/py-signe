@@ -1,5 +1,4 @@
-import utils
-
+from . import utils
 from signe import signal, computed, effect
 
 

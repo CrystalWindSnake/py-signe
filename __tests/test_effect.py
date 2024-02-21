@@ -1,6 +1,6 @@
 import json
 from signe import reactive, effect, computed, signal, stop, to_raw
-import utils
+from . import utils
 from typing import Callable
 import math
 

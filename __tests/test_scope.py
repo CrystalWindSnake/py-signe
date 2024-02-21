@@ -1,4 +1,4 @@
-import utils
+from . import utils
 from signe import signal, effect, computed, scope
 import gc
 import weakref
