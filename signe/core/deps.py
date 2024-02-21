@@ -52,11 +52,7 @@ class GetterDepManager:
     ):
         running_caller = self._executor.get_running_caller()
 
-        if not (
-            running_caller
-            and running_caller.auto_collecting_dep
-            and self._executor.should_track
-        ):
+        if not (running_caller and self._executor.should_track()):
             return
 
         dep = self._deps_map.get(key)

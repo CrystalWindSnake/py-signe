@@ -1,12 +1,9 @@
 from __future__ import annotations
-from typing import Dict, TYPE_CHECKING
+from typing import Callable, Dict
 
-from signe.core.consts import EffectState
+
 from .collections import Stack
 from .protocols import CallerProtocol
-
-if TYPE_CHECKING:
-    from signe.core import Effect
 
 
 def _defatul_executor_builder():
@@ -14,10 +11,6 @@ def _defatul_executor_builder():
 
 
 executor_builder = _defatul_executor_builder
-
-
-def get_executor():
-    pass
 
 
 class Executor:
@@ -57,7 +50,7 @@ class Executor:
 
 class ExecutionScheduler:
     def __init__(self) -> None:
-        self._effect_updates: Dict[Effect, None] = {}
+        self._scheduler_fns: Dict[Callable[[], None], None] = {}
         self.__running = False
         self.pause_should_run_stack = 0
 
@@ -71,16 +64,16 @@ class ExecutionScheduler:
     def reset_scheduling(self):
         self.pause_should_run_stack -= 1
 
-    def mark_update(self, effect: Effect):
-        self._effect_updates[effect] = None
+    def push_scheduler_fn(self, fn: Callable[[], None]):
+        self._scheduler_fns[fn] = None
 
     def run(self):
         count = 0
         self.__running = True
 
         try:
-            while self._effect_updates:
-                self._run_effect_updates()
+            while self._scheduler_fns:
+                self._run_scheduler_fns()
 
                 count += 1
                 if count >= 10000:
@@ -88,13 +81,11 @@ class ExecutionScheduler:
         finally:
             self.__running = False
 
-    def _run_effect_updates(self):
-        effects = tuple(self._effect_updates.keys())
-        self._effect_updates.clear()
-        for effect in effects:
-            effect.calc_state()
-            if effect.state <= EffectState.NEED_UPDATE:
-                effect.update()
+    def _run_scheduler_fns(self):
+        fns = tuple(self._scheduler_fns.keys())
+        self._scheduler_fns.clear()
+        for fn in fns:
+            fn()
 
 
 class BatchExecutionScheduler(ExecutionScheduler):
@@ -103,7 +94,7 @@ class BatchExecutionScheduler(ExecutionScheduler):
 
     @property
     def should_run(self):
-        return True
+        return False
 
     def run(self):
         pass

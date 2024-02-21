@@ -1,7 +1,5 @@
-import _imports
-import pytest
-import utils
-from signe.core import signal, effect, computed, cleanup, reactive, batch
+from . import utils
+from signe import signal, effect, computed, cleanup, reactive, batch
 
 
 class Test_signal_case:
@@ -20,7 +18,7 @@ class Test_signal_case:
 
         try:
             num1.value = 99
-        except Exception as e:
+        except Exception:
             pass
         finally:
             pass

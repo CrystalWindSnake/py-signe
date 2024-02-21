@@ -1,6 +1,5 @@
 from __future__ import annotations
 from collections import UserDict, UserList
-from datetime import date, datetime
 from typing import (
     Any,
     Callable,
@@ -12,8 +11,9 @@ from typing import (
 )
 from signe.core.consts import EffectState
 from signe.core.deps import GetterDepManager
+from signe.core.helper import has_changed, is_object
 from signe.core.protocols import RawableProtocol
-from signe.core.utils import common_not_eq_value
+from .context import get_executor
 from .batch import batch
 from weakref import WeakKeyDictionary, WeakValueDictionary
 import types
@@ -25,21 +25,51 @@ P = TypeVar("P")
 _proxy_maps: WeakValueDictionary = WeakValueDictionary()
 
 
+def track_all_deep(obj):
+    stack = [obj]
+
+    while len(stack):
+        current = stack.pop()
+        if isinstance(current, ListProxy):
+            for value in current:
+                if is_reactive(value):
+                    stack.append(value)
+
+        elif isinstance(current, DictProxy):
+            for value in current.values():
+                if is_reactive(value):
+                    stack.append(value)
+        elif isinstance(current, InstanceProxy):
+            for key in _get_data_fields(current):
+                value = getattr(current, key)
+                if is_reactive(value):
+                    stack.append(value)
+        else:
+            pass
+
+
+def track_all(obj, deep=False):
+    executor = get_executor()
+    if not executor.should_track():
+        return
+
+    if isinstance(obj, (DictProxy, ListProxy)):
+        if deep:
+            track_all_deep(obj)
+        else:
+            iter(obj)
+    elif isinstance(obj, (InstanceProxy)):
+        if deep:
+            track_all_deep(obj)
+        else:
+            for key in _get_data_fields(obj):
+                getattr(obj, key)
+    else:
+        pass
+
+
 def reactive(obj: T) -> T:
-    if isinstance(
-        obj,
-        (
-            str,
-            int,
-            float,
-            date,
-            datetime,
-            ListProxy,
-            DictProxy,
-            Callable,
-            InstanceProxy,
-        ),
-    ):
+    if not is_object(obj) or is_reactive(obj):
         return cast(T, obj)
 
     obj_id = id(obj)
@@ -60,6 +90,15 @@ def reactive(obj: T) -> T:
     return cast(T, proxy)
 
     # return obj
+
+
+def to_reactive(obj: T) -> T:
+    res = reactive(obj) if is_object(obj) else obj
+    return cast(T, res)
+
+
+def is_reactive(obj: object) -> bool:
+    return _is_proxy(obj)
 
 
 def to_raw(obj: T) -> T:
@@ -87,6 +126,7 @@ class DictProxy(UserDict):
         return res
 
     def __setitem__(self, key, item):
+        item = to_raw(item)
         is_new = key not in self.data
 
         @batch
@@ -101,7 +141,7 @@ class DictProxy(UserDict):
                 org_value = self.data[key]
                 self.data[key] = item
 
-                if common_not_eq_value(org_value, item):
+                if has_changed(org_value, item):
                     self._dep_manager.triggered(key, item, EffectState.NEED_UPDATE)
 
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
@@ -159,11 +199,16 @@ class ListProxy(UserList):
         return res
 
     def __setitem__(self, i, item):
+        item = to_raw(item)
         org_value = self.data[i]
         self.data[i] = item
 
-        if common_not_eq_value(org_value, item):
-            self._dep_manager.triggered(i, item, EffectState.NEED_UPDATE)
+        if has_changed(org_value, item):
+
+            @batch
+            def _():
+                self._dep_manager.triggered(i, item, EffectState.NEED_UPDATE)
+                self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def __iter__(self) -> Iterator:
         self._dep_manager.tracked("__iter__")
@@ -175,30 +220,49 @@ class ListProxy(UserList):
         return len(self.data)
 
     def append(self, item: Any) -> None:
-        super().append(item)
+        super().append(to_raw(item))
 
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def extend(self, other: Iterable) -> None:
-        super().extend(other)
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+        super().extend((to_raw(o) for o in other))
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def remove(self, item: Any) -> None:
-        super().remove(item)
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+        super().remove(to_raw(item))
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def pop(self, i: int = -1) -> Any:
         super().pop(i)
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def clear(self) -> None:
         super().clear()
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
-        self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+    def __contains__(self, item) -> bool:
+        result = to_raw(item) in self.data
+        self._dep_manager.tracked("len")
+        return result
 
     def to_raw(self):
         return self.data
@@ -252,6 +316,11 @@ def _trigger_ins(proxy: InstanceProxy, key, value):
 
     setattr(ins, key, value)
     dep_manager.triggered(key, value, EffectState.NEED_UPDATE)
+
+
+def _get_data_fields(proxy: InstanceProxy):
+    ins = _instance_proxy_maps.get(proxy)
+    return [f for f in dir(ins) if f[0] != "_"]
 
 
 class InstanceProxy:

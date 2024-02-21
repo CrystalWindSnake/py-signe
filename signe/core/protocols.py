@@ -2,7 +2,6 @@ from __future__ import annotations
 from typing import (
     Callable,
     Generic,
-    Optional,
     Protocol,
     TypeVar,
     TYPE_CHECKING,
@@ -11,12 +10,19 @@ from typing import (
 
 
 if TYPE_CHECKING:
-    from signe.core.collections import Stack
     from signe.core.deps import Dep
     from .consts import EffectState
-    from .runtime import ExecutionScheduler
 
 _T = TypeVar("_T")
+
+
+@runtime_checkable
+class OnGetterProtocol(Protocol):
+    def get_value_with_track(self):
+        ...
+
+    def get_value_without_track(self):
+        ...
 
 
 class DisposableProtocol(Protocol):
@@ -42,8 +48,6 @@ class GetterProtocol(Protocol[_T]):  # type: ignore
 
 
 class CallerProtocol(Protocol[_T]):  # type: ignore
-    auto_collecting_dep: bool
-
     @property
     def id(self) -> str:
         ...
@@ -74,34 +78,6 @@ class IScope(Protocol):
         ...
 
     def dispose(self):
-        ...
-
-
-class ExecutorProtocol(Protocol):
-    execution_scheduler_stack: Stack[ExecutionScheduler]
-
-    def mark_running_caller(self, caller: CallerProtocol):
-        ...
-
-    def reset_running_caller(self, caller: CallerProtocol):
-        ...
-
-    def get_running_caller(self) -> Optional[CallerProtocol]:
-        ...
-
-    def get_current_scheduler(self) -> ExecutionScheduler:
-        ...
-
-    def pause_track(self):
-        ...
-
-    def reset_track(self):
-        ...
-
-    def should_track(self) -> bool:
-        ...
-
-    def set_default_execution_scheduler(self, execution_scheduler: ExecutionScheduler):
         ...
 
 

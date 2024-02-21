@@ -1,31 +1,20 @@
-from signe.core.computed import Computed
-from signe.core.signal import Signal
-from .types import TMaybeSignal
+from datetime import datetime, date
+import inspect
+from typing import Callable, Tuple
 
 
-def is_signal(obj: TMaybeSignal):
-    """Checks if a value is a signal or computed object.
-
-    Args:
-        obj (_type_): _description_
-    """
-    return isinstance(obj, (Signal, Computed))
+def get_func_args_count(fn):
+    return len(inspect.getfullargspec(fn).args)
 
 
-def to_value(obj: TMaybeSignal):
-    """Normalizes values / signals / getters to values.
+def is_object(obj):
+    return obj is not None and (
+        not isinstance(obj, (int, str, Tuple, float, datetime, date, Callable))
+    )
 
-    Args:
-        obj (_type_): _description_
 
-    ## Example
-    ```
-    to_value(1)          #    --> 1
-    to_value(signal(1))  #    --> 1
-    ```
-
-    """
-    if is_signal(obj):
-        return obj.value
-
-    return obj
+def has_changed(a, b):
+    try:
+        return bool(a != b)
+    except ValueError:
+        return True

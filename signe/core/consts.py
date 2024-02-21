@@ -1,5 +1,4 @@
 from enum import IntEnum
-# EffectState = Literal["INIT", "PENDING", "NEED_UPDATE", "RUNNING", "STALE"]
 
 
 class EffectState(IntEnum):

@@ -1,5 +1,5 @@
-from signe.core import signal, on, computed, batch
-import utils
+from signe import signal, on, computed, batch, reactive
+from . import utils
 
 
 class Test_on:
@@ -76,6 +76,81 @@ class Test_on:
         assert dummy1 == 100
         assert dummy2 == 99
 
+    def test_watch_on_reactive_by_list(self):
+        dummy = []
+
+        data = reactive([1, 2, 3, 4])
+        s = signal(1)
+
+        @on(lambda: data, deep=True)
+        def _():
+            dummy.append(data[0])
+            s.value
+
+        assert dummy == [1]
+        data[0] = 99
+        s.value = 99
+        assert dummy == [1, 99]
+
+    def test_watch_on_reactive_by_dict(self):
+        dummy = []
+
+        data = reactive({"x": 1, "y": 2})
+        s = signal(1)
+
+        @on(lambda: data, deep=True)
+        def _():
+            dummy.append(data["x"])
+            s.value
+
+        assert dummy == [1]
+        data["x"] = 99
+        s.value = 99
+        assert dummy == [1, 99]
+
+    def test_watch_on_reactive_with_deep_mode(self):
+        dummy = []
+
+        data = reactive(
+            [
+                {"name": "n1", "age": 10},
+                {"name": "n2", "age": 20},
+                {"name": "n3", "age": 30},
+            ]
+        )
+
+        @on(lambda: data, deep=True)
+        def _():
+            dummy.append(data[0]["age"])
+
+        assert dummy == [10]
+        data[0]["age"] = 99
+        assert dummy == [10, 99]
+
+    def test_watch_on_reactive_by_class(self):
+        dummy = []
+
+        class Model:
+            def __init__(self) -> None:
+                self.x = 1
+                self.y = 2
+
+            def inc(self):
+                pass
+
+        data = reactive(Model())
+        s = signal(1)
+
+        @on(lambda: data, deep=True)
+        def _():
+            dummy.append(data.x)
+            s.value
+
+        assert dummy == [1]
+        data.x = 99
+        s.value = 99
+        assert dummy == [1, 99]
+
     def test_should_executed_twice(self):
         result = []
         num1 = signal(1)
@@ -107,14 +182,16 @@ class Test_on:
             def time(self):
                 return self._time
 
-        num1 = signal(1)
+        num1 = signal(1, debug_name="num1")
         num2 = signal(2)
 
-        cp_total = computed(lambda: num1.value + num2.value)
+        @computed(debug_name="cp tota")
+        def cp_total():
+            return num1.value + num2.value
 
         run_state_on1 = RunState(1)
 
-        @on(num1, onchanges=True)
+        @on(num1, onchanges=True, effect_kws={"debug_name": "on1"})
         def _on1(s1):
             if run_state_on1.time == 1:
                 assert s1.previous == 1
@@ -128,14 +205,14 @@ class Test_on:
 
         run_state_on2 = RunState(0)
 
-        @on([num1, num2, cp_total])
+        @on([num1, num2, cp_total], effect_kws={"debug_name": "on2"})
         def _on2(s1, s2, s3):
             if run_state_on2.time == 0:
-                assert s1.previous == 1
+                assert s1.previous is None
                 assert s1.current == 1
-                assert s2.previous == 2
+                assert s2.previous is None
                 assert s2.current == 2
-                assert s3.previous == 3
+                assert s3.previous is None
                 assert s3.current == 3
 
             if run_state_on2.time == 1:
@@ -164,3 +241,78 @@ class Test_on:
 
         # change 2
         num1.value = 999
+
+    def test_ref_value_output_reactive(self):
+        records_len = []
+        records_age = []
+
+        records_age_without_deep = []
+
+        data = signal(
+            [
+                {"name": "n1", "age": 10},
+                {"name": "n2", "age": 20},
+                {"name": "n3", "age": 30},
+            ]
+        )
+
+        @on(data, deep=True)
+        def _():
+            records_len.append(len(data.value))
+            records_age.append(data.value[1]["age"])
+
+        # deep=False
+        @on(data)
+        def _():
+            records_age_without_deep.append(data.value[1]["age"])
+
+        assert records_len == [3]
+        assert records_age == [20]
+        assert records_age_without_deep == [20]
+        data.value.append({"name": "n4", "age": 40})
+        assert records_len == [3, 4]
+        assert records_age == [20, 20]
+        assert records_age_without_deep == [20]
+
+        data.value[1]["age"] = 99
+        assert records_len == [3, 4, 4]
+        assert records_age == [20, 20, 99]
+        assert records_age_without_deep == [20]
+
+        #
+        data.value = [
+            {"name": "n1", "age": 10},
+            {"name": "n2", "age": 666},
+        ]
+
+        assert records_age == [20, 20, 99, 666]
+        assert records_len == [3, 4, 4, 2]
+        assert records_age_without_deep == [20, 666]
+
+    def test_ref_value_dynamic_addition_list(self):
+        records = []
+        records_calc = []
+
+        data = signal([])
+
+        @on(data, deep=True)
+        def _():
+            records.append(len(data.value))
+            records_calc.append(sum(r["age"] for r in data.value))
+
+        assert records == [0]
+        assert records_calc == [0]
+
+        data.value.extend(
+            [
+                {"name": "n1", "age": 10},
+                {"name": "n2", "age": 20},
+                {"name": "n3", "age": 30},
+            ]
+        )
+
+        assert records == [0, 3]
+        assert records_calc == [0, 60]
+
+        data.value[0]["age"] = 66
+        assert records_calc == [0, 60, 66 + 20 + 30]

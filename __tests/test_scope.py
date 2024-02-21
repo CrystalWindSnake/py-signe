@@ -1,7 +1,5 @@
-import _imports
-import pytest
-import utils
-from signe.core import signal, effect, computed, scope
+from . import utils
+from signe import signal, effect, computed, scope
 import gc
 import weakref
 import logging

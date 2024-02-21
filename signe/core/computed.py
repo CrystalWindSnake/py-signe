@@ -10,10 +10,10 @@ from typing import (
 )
 from signe.core.consts import EffectState
 from signe.core.deps import GetterDepManager
+from signe.core.helper import has_changed
 from signe.core.idGenerator import IdGen
 
 from signe.core.protocols import ComputedResultProtocol, IScope
-from signe.core.utils import common_not_eq_value
 
 from .effect import Effect
 from .scope import _GLOBAL_SCOPE_MANAGER
@@ -46,10 +46,11 @@ class Computed(Generic[_T]):
         self._effect = Effect(
             getter,
             trigger_fn,
-            immediate=False,
+            # immediate=False,
             debug_trigger=debug_trigger,
             scope=scope,
             state=EffectState.COMPUTED_INIT,
+            debug_name=debug_name,
         )
         self._dep_manager = GetterDepManager()
         if scope:
@@ -96,13 +97,14 @@ class Computed(Generic[_T]):
     def _update_value(self):
         new_value = self._effect.update()  # type: ignore
 
-        if common_not_eq_value(self._value, new_value):
+        if has_changed(self._value, new_value):
             self._dep_manager.triggered("value", new_value, EffectState.NEED_UPDATE)
 
         self._value = new_value
 
     def __repr__(self) -> str:
-        return f"Computed(id ={self.id}, name={self._debug_name})"
+        state = self._effect.state  # type: ignore
+        return f"Computed(id ={self.id}, name={self._debug_name}),state={state}"
 
 
 _T_computed = ComputedResultProtocol[_T]
