@@ -12,9 +12,9 @@ tasks:
     - pytest -v __tests 
 
   test-cov:
-    - coverage run --source signe --parallel-mode -m pytest __tests/
+    - coverage run  -m pytest __tests/
     - coverage combine
-    - coverage report -m --fail-under=95
+    - coverage report -m
 
   dist: 
     - task: clean ## builds source and wheel package

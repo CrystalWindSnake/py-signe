@@ -1,3 +1,14 @@
 [tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["F503"]
+
+
+
+[tool.coverage.run]
+source=["signe"]
+parallel=true
+
+
+[tool.coverage.report]
+fail_under=95
+
