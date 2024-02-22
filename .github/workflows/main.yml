@@ -17,4 +17,4 @@ jobs:
       - run: pytest __tests/
       - name: coverage report
         run: |
-          pytest --cov-report term-missing --cov=signe  __tests/
+          pytest --cov-report term-missing --cov=signe  __tests/ --cov-fail-under=90
