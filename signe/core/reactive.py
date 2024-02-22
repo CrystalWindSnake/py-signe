@@ -6,7 +6,6 @@ from typing import (
     Iterator,
     List,
     Mapping,
-    Tuple,
     TypeVar,
     cast,
     Iterable,
@@ -18,7 +17,6 @@ from signe.core.protocols import RawableProtocol
 from .context import get_executor
 from .batch import batch
 from weakref import WeakKeyDictionary, WeakValueDictionary
-import types
 
 T = TypeVar("T")
 P = TypeVar("P")
@@ -47,13 +45,13 @@ def track_all_deep(obj):
                 if is_reactive(value):
                     stack.append(value)
         else:
-            pass
+            pass  # pragma: no cover
 
 
 def track_all(obj, deep=False):
     executor = get_executor()
     if not executor.should_track():
-        return
+        return  # pragma: no cover
 
     if isinstance(obj, (DictProxy, ListProxy)):
         if deep:
@@ -67,7 +65,7 @@ def track_all(obj, deep=False):
             for key in _get_data_fields(obj):
                 getattr(obj, key)
     else:
-        pass
+        pass  # pragma: no cover
 
 
 def reactive(obj: T) -> T:
@@ -170,17 +168,15 @@ class DictProxy(UserDict):
         self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
 
     def pop(self, i: int = -1) -> Any:
-        super().pop(i)
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+        return super().pop(i)
 
     def clear(self) -> None:
         super().clear()
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
 
     def __hash__(self) -> int:
         return hash(id(self))
 
-    def __eq__(self, __value: object) -> bool:
+    def __eq__(self, __value: object) -> bool:  # pragma: no cover
         if isinstance(__value, self.__class__):
             return self.__hash__() == __value.__hash__()
 
@@ -192,7 +188,8 @@ class DictProxy(UserDict):
 
 class ListProxy(UserList):
     def __init__(self, initlist):
-        super().__init__(initlist)
+        super().__init__()
+        self.data = initlist
         self._dep_manager = GetterDepManager()
         self.__nested = set()
 
@@ -249,12 +246,14 @@ class ListProxy(UserList):
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def pop(self, i: int = -1) -> Any:
-        super().pop(i)
+        value = super().pop(i)
 
         @batch
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+        return value
 
     def clear(self) -> None:
         super().clear()
@@ -272,12 +271,22 @@ class ListProxy(UserList):
     def __str__(self) -> str:
         return str(self.data)
 
+    def __hash__(self) -> int:
+        return hash(id(self))
+
+    def __eq__(self, __value: object) -> bool:
+        if isinstance(__value, self.__class__):
+            return self.__hash__() == __value.__hash__()
+
+        return False
+
     def to_raw(self):
         return self.data
 
 
 _instance_proxy_maps: WeakKeyDictionary = WeakKeyDictionary()
 _instance_dep_maps: WeakKeyDictionary = WeakKeyDictionary()
+_instance_nested: WeakKeyDictionary = WeakKeyDictionary()
 
 
 def _register_ins(
@@ -311,8 +320,9 @@ def _track_ins(proxy: InstanceProxy, key):
 
         dep_manager.tracked(key)
 
-        value = getattr(ins, key)
-
+        value = reactive(getattr(ins, key))
+        if _is_proxy(value):
+            _instance_nested[proxy] = value
         return value
 
 

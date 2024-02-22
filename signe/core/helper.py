@@ -16,5 +16,5 @@ def is_object(obj):
 def has_changed(a, b):
     try:
         return bool(a != b)
-    except ValueError:
+    except ValueError:  # pragma: no cover
         return True

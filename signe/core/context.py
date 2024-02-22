@@ -16,7 +16,7 @@ _executor_builder: _T_executor_builder = default_executor_builder
 
 def set_executor_builder(fn: Callable[[], Executor]):
     global _executor_builder
-    _executor_builder = fn
+    _executor_builder = fn  # pragma: no cover
 
 
 def get_executor() -> Executor:

@@ -1,0 +1,19 @@
+[tool.ruff.lint]
+select = ["E", "F"]
+ignore = ["E501"]
+
+
+
+[tool.coverage.run]
+source=["signe"]
+parallel=true
+
+
+[tool.coverage.report]
+fail_under=95
+omit=["signe/core/protocols.py"]
+exclude_also=[
+    'def __repr__',
+    'def __str__',
+    '^\s*...\s*$'
+]

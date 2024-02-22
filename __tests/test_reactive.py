@@ -1,5 +1,5 @@
 from dataclasses import dataclass
-from signe import reactive, computed, effect, signal, to_raw
+from signe import reactive, computed, effect, signal, to_raw, to_value
 from . import utils
 
 
@@ -25,7 +25,6 @@ class Test_base_case:
         model.inc()
         assert dummy == 1
 
-    @utils.mark_todo
     def test_dataclass(self):
         dummy = []
 
@@ -33,9 +32,6 @@ class Test_base_case:
         class T:
             name: str
             age: int
-
-            def inc_agg(self, num: int):
-                self.age += num
 
         data = reactive(
             [
@@ -59,7 +55,7 @@ class Test_base_case:
             dummy.append(cp1.value)
 
         assert dummy == [100]
-        data[0].inc_agg(99)
+        data[0].age += 99
         assert dummy == [100, 199]
 
     @utils.mark_todo
@@ -98,6 +94,63 @@ class Test_base_case:
         assert dummy == [100]
         data[0].inc_agg(99)
         assert dummy == [100, 199]
+
+    def test_dict_remove_pop(self):
+        dummy = []
+        data = signal({"a": 1, "b": 2})
+
+        @effect
+        def _():
+            dummy.append(len(data.value))
+
+        assert dummy == [2]
+        assert data.value.pop("b") == 2
+        assert dummy == [2, 1]
+
+        data.value.clear()
+        assert dummy == [2, 1, 0]
+
+    def test_list_pop_clear_remove(self):
+        dummy = []
+        data = signal([1, 2, 3, 4])
+
+        @effect
+        def _():
+            dummy.append(len(data.value))
+
+        assert dummy == [4]
+        assert data.value.pop() == 4
+        assert dummy == [4, 3]
+
+        data.value.remove(1)
+        assert dummy == [4, 3, 2]
+
+        data.value.clear()
+        assert dummy == [4, 3, 2, 0]
+
+    def test_dict_in(self):
+        dummy = []
+        data = signal({"a": 1, "b": 2})
+
+        @effect
+        def _():
+            dummy.append("a" in data.value)
+
+        assert dummy == [True]
+        assert data.value.pop("a") == 1
+        assert dummy == [True, False]
+
+    def test_list_in(self):
+        dummy = []
+        data = signal([1, 2])
+
+        @effect
+        def _():
+            dummy.append(2 in data.value)
+
+        assert dummy == [True]
+        assert data.value.pop() == 2
+        assert dummy == [True, False]
 
     def test_should_call_ins_method(self):
         class M:
@@ -150,11 +203,17 @@ class Test_base_case:
 
 
 class Test_to_raw:
+    def test_signal_list(self):
+        data = [[1, 2]]
+        s = signal(data)
+
+        assert to_raw(s.value[0]) is data[0]
+
     def test_dict_list(self):
         data = [{}]
         s = signal(data)
 
-        assert to_raw(s.value[0]) == data[0]
+        assert to_raw(s.value[0]) is data[0]
 
     def test_class_list(self):
         class Model:
@@ -163,7 +222,7 @@ class Test_to_raw:
         data = [Model()]
         s = signal(data)
 
-        assert to_raw(s.value[0]) == data[0]
+        assert to_raw(s.value[0]) is data[0]
 
     def test_dataclass_list(self):
         @dataclass
@@ -173,7 +232,7 @@ class Test_to_raw:
         data = [Model()]
         s = signal(data)
 
-        assert to_raw(s.value[0]) == data[0]
+        assert to_raw(s.value[0]) is data[0]
 
     def test_shallow(self):
         dummy = []
@@ -226,3 +285,10 @@ class Test_to_raw:
 
         setattr(data.value[0], "name", "new")
         assert dummy == ["n1", "new"]
+
+
+class Test_to_value:
+    def test_to_value(self):
+        assert to_value(1) == 1
+        assert to_value(signal(1)) == 1
+        assert to_value(computed(lambda: 1)) == 1

@@ -218,7 +218,7 @@ class Test_signal_case:
         assert dummy_total == 0
         assert dummy_show == 0
 
-    def test_signal_assignment_triggere_in_effect(self):
+    def test_signal_assign_trigger_in_effect(self):
         '''"During an execution, the signal assignment operation is triggered in method A."'''
         num = signal(0)
         get_cp_num1 = signal(99)

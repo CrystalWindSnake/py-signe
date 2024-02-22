@@ -108,6 +108,19 @@ class Test_on:
         s.value = 99
         assert dummy == [1, 99]
 
+    def test_watch_on_reactive_list_in_dict(self):
+        dummy = []
+        data = reactive({"list": [10, 20]})
+
+        @on(lambda: data, deep=True)
+        def _():
+            dummy.append(len(data["list"]))
+
+        assert dummy == [2]
+
+        data["list"].append(30)
+        assert dummy == [2, 3]
+
     def test_watch_on_reactive_with_deep_mode(self):
         dummy = []
 
@@ -135,9 +148,6 @@ class Test_on:
                 self.x = 1
                 self.y = 2
 
-            def inc(self):
-                pass
-
         data = reactive(Model())
         s = signal(1)
 
@@ -150,6 +160,41 @@ class Test_on:
         data.x = 99
         s.value = 99
         assert dummy == [1, 99]
+
+    def test_watch_on_reactive_list_in_class(self):
+        dummy = []
+
+        class Model:
+            def __init__(self) -> None:
+                self.values = [10, 20]
+
+        data = reactive(Model())
+
+        @on(lambda: data, deep=True)
+        def _():
+            dummy.append(len(data.values))
+
+        assert dummy == [2]
+
+        data.values.append(30)
+        assert dummy == [2, 3]
+
+    def test_watch_on_reactive_list_in_class_shallow_mode(self):
+        dummy = []
+
+        class Model:
+            def __init__(self) -> None:
+                self.values = [10, 20]
+
+        data = reactive(Model())
+
+        @on(lambda: data, deep=False)
+        def _():
+            dummy.append(len(data.values))
+
+        assert dummy == [2]
+        data.values.append(30)
+        assert dummy == [2]
 
     def test_should_executed_twice(self):
         result = []

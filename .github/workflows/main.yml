@@ -12,5 +12,12 @@ jobs:
       - uses: actions/setup-python@v3.1.4
         with:
           python-version: '3.8'
-      - run: pip install pytest typing_extensions
-      - run: pytest __tests/
+      - name: install deps
+        run: pip install -r requirements-dev.txt
+      - name: run test
+        run: pytest __tests/
+      - name: coverage report
+        run: |
+          coverage run -m pytest __tests/
+          coverage combine
+          coverage report -m

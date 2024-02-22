@@ -11,14 +11,8 @@ class Stack(Generic[T]):
     def set_current(self, obj: T):
         self.__stack.append(obj)
 
-    def is_current(self, obj: T):
-        return self.get_current() is obj
-
     def reset_current(self):
         return self.__stack.pop()
-
-    def __len__(self):
-        return len(self.__stack)
 
     def get_current(
         self,

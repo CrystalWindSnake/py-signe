@@ -13,6 +13,7 @@ if TYPE_CHECKING:
     from signe.core.deps import Dep
     from .consts import EffectState
 
+_TOut = TypeVar("_TOut", covariant=True)
 _T = TypeVar("_T")
 
 
@@ -30,7 +31,7 @@ class DisposableProtocol(Protocol):
         ...
 
 
-class GetterProtocol(Protocol[_T]):  # type: ignore
+class GetterProtocol(Protocol[_TOut]):  # type: ignore
     @property
     def id(self) -> str:
         ...
@@ -40,14 +41,14 @@ class GetterProtocol(Protocol[_T]):  # type: ignore
         ...
 
     @property
-    def value(self) -> _T:
+    def value(self) -> _TOut:
         ...
 
     def confirm_state(self):
         ...
 
 
-class CallerProtocol(Protocol[_T]):  # type: ignore
+class CallerProtocol(Protocol[_TOut]):  # type: ignore
     @property
     def id(self) -> str:
         ...
@@ -63,7 +64,7 @@ class CallerProtocol(Protocol[_T]):  # type: ignore
     def state(self) -> EffectState:
         ...
 
-    def update(self) -> _T:
+    def update(self) -> _TOut:
         ...
 
     def add_upstream_ref(self, dep: Dep):
@@ -91,18 +92,18 @@ class SignalResultProtocol(Protocol[_T]):
         ...
 
 
-class ComputedResultProtocol(Generic[_T], Protocol):  # type: ignore
+class ComputedResultProtocol(Generic[_TOut], Protocol):  # type: ignore
     @property
-    def value(self) -> _T:
+    def value(self) -> _TOut:
         ...
 
     def __call__(
         self,
-    ) -> _T:
+    ) -> _TOut:
         ...
 
 
 @runtime_checkable
-class RawableProtocol(Protocol[_T]):
-    def to_raw(self) -> _T:
+class RawableProtocol(Protocol[_TOut]):
+    def to_raw(self) -> _TOut:
         ...
