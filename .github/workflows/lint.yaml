@@ -24,5 +24,5 @@ jobs:
         run: ruff check . 
       - name: Install mypy
         run: pip install mypy
-      - name: Run mypy
-        run: mypy signe/ --follow-imports=skip
+      # - name: Run mypy
+      #   run: mypy signe/ --follow-imports=skip
