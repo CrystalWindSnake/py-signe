@@ -9,7 +9,7 @@ from typing import (
 from signe.core.protocols import IScope
 from weakref import WeakSet
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .protocols import DisposableProtocol
 
 

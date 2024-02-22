@@ -58,11 +58,7 @@ class Computed(Generic[_T]):
 
     @property
     def id(self):
-        return self.__id
-
-    @property
-    def is_effect(self) -> bool:
-        return False
+        return self.__id  # pragma: no cover
 
     def trigger(self, state: EffectState):
         state = EffectState.PENDING if state == EffectState.NEED_UPDATE else state

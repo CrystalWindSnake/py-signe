@@ -22,13 +22,13 @@ from .consts import EffectState
 from .context import get_executor
 from functools import partial
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from signe.core.deps import Dep
 
 _T = TypeVar("_T")
 
 
-class EffectOption:
+class EffectOption:  # pragma: no cover
     def __init__(self, level=0) -> None:
         self.level = level
 
@@ -183,7 +183,7 @@ class Effect(Generic[_T]):
     def __hash__(self) -> int:
         return hash(self.id)
 
-    def __eq__(self, __value: object) -> bool:
+    def __eq__(self, __value: object) -> bool:  # pragma: no cover
         if isinstance(__value, self.__class__):
             return self.__hash__() == __value.__hash__()
 

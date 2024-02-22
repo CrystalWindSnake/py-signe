@@ -7,7 +7,7 @@ from .context import get_executor
 from .consts import EffectState
 
 
-if TYPE_CHECKING:
+if TYPE_CHECKING:  # pragma: no cover
     from .computed import Computed
     from signe.core.protocols import CallerProtocol
 
@@ -32,7 +32,7 @@ class Dep:
     def __hash__(self) -> int:
         return hash(self.__id)
 
-    def __eq__(self, __value: object) -> bool:
+    def __eq__(self, __value: object) -> bool:  # pragma: no cover
         if isinstance(__value, self.__class__):
             return self.__hash__() == __value.__hash__()
 

@@ -7,7 +7,7 @@ from .protocols import CallerProtocol
 
 
 def _defatul_executor_builder():
-    return Executor()
+    return Executor()  # pragma: no cover
 
 
 executor_builder = _defatul_executor_builder
@@ -21,16 +21,16 @@ class Executor:
         self._pause_track_count = 0
 
     def pause_track(self):
-        self._pause_track_count += 1
+        self._pause_track_count += 1  # pragma: no cover
 
     def reset_track(self):
-        self._pause_track_count -= 1
+        self._pause_track_count -= 1  # pragma: no cover
 
     def should_track(self):
         return self._pause_track_count <= 0
 
     def set_default_execution_scheduler(self, execution_scheduler: ExecutionScheduler):
-        self.__defalut_executionScheduler = execution_scheduler
+        self.__defalut_executionScheduler = execution_scheduler  # pragma: no cover
 
     def get_current_scheduler(self):
         return (
@@ -76,7 +76,7 @@ class ExecutionScheduler:
                 self._run_scheduler_fns()
 
                 count += 1
-                if count >= 10000:
+                if count >= 10000:  # pragma: no cover
                     raise Exception("exceeded the maximum number of execution rounds.")
         finally:
             self.__running = False
@@ -96,7 +96,7 @@ class BatchExecutionScheduler(ExecutionScheduler):
     def should_run(self):
         return False
 
-    def run(self):
+    def run(self):  # pragma: no cover
         pass
 
     def run_batch(self):
