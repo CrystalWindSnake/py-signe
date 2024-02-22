@@ -6,7 +6,6 @@ from typing import (
     Iterator,
     List,
     Mapping,
-    Tuple,
     TypeVar,
     cast,
     Iterable,
@@ -18,7 +17,6 @@ from signe.core.protocols import RawableProtocol
 from .context import get_executor
 from .batch import batch
 from weakref import WeakKeyDictionary, WeakValueDictionary
-import types
 
 T = TypeVar("T")
 P = TypeVar("P")

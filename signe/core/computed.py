@@ -64,10 +64,6 @@ class Computed(Generic[_T]):
     def is_effect(self) -> bool:
         return False
 
-    @property
-    def is_signal(self) -> bool:
-        return False
-
     def trigger(self, state: EffectState):
         state = EffectState.PENDING if state == EffectState.NEED_UPDATE else state
         self._effect.update_state(state)  # type: ignore
