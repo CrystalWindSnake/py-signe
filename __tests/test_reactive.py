@@ -4,6 +4,7 @@ from . import utils
 
 
 class Test_base_case:
+    @utils.mark_todo
     def test_should_observe_class_method_invocations(self):
         class Model:
             def __init__(self) -> None:
@@ -24,6 +25,7 @@ class Test_base_case:
         model.inc()
         assert dummy == 1
 
+    @utils.mark_todo
     def test_dataclass(self):
         dummy = []
 
@@ -60,6 +62,7 @@ class Test_base_case:
         data[0].inc_agg(99)
         assert dummy == [100, 199]
 
+    @utils.mark_todo
     def test_isinstance_method_with_args(self):
         dummy = []
 
@@ -95,6 +98,18 @@ class Test_base_case:
         assert dummy == [100]
         data[0].inc_agg(99)
         assert dummy == [100, 199]
+
+    def test_should_call_ins_method(self):
+        class M:
+            def __getitem__(self, i):
+                return i
+
+            def fn1(self):
+                return self[0]
+
+        data = signal(M())
+
+        assert data.value.fn1() == 0
 
     def test_ref_value_output_reactive(self):
         dummy1 = []

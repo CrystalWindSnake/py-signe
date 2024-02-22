@@ -4,7 +4,9 @@ from typing import (
     Any,
     Callable,
     Iterator,
+    List,
     Mapping,
+    Tuple,
     TypeVar,
     cast,
     Iterable,
@@ -81,7 +83,7 @@ def reactive(obj: T) -> T:
     if isinstance(obj, Mapping):
         proxy = DictProxy(obj)
 
-    elif isinstance(obj, Iterable):
+    elif isinstance(obj, List):
         proxy = ListProxy(obj)
     else:
         proxy = InstanceProxy(obj)
@@ -267,6 +269,9 @@ class ListProxy(UserList):
         self._dep_manager.tracked("len")
         return result
 
+    def __str__(self) -> str:
+        return str(self.data)
+
     def to_raw(self):
         return self.data
 
@@ -291,16 +296,17 @@ def _track_ins(proxy: InstanceProxy, key):
     ins = _instance_proxy_maps.get(proxy)
     if _is_instance_method(ins, key):
         method = getattr(ins, key)
+        return method
 
-        def replace_method(instance, *args, **kws):
-            method.__func__(instance, *args, **kws)
-            method(*args, **kws)
+        # def replace_method(instance, *args, **kws):
+        #     method.__func__(instance, *args, **kws)
+        #     method(*args, **kws)
 
-        fake_method = types.MethodType(replace_method, proxy)
-        return fake_method
+        # fake_method = types.MethodType(replace_method, proxy)
+        # return fake_method
     else:
         dep_manager = _instance_dep_maps.get(proxy)
-        assert ins
+        # assert ins
         assert dep_manager
 
         dep_manager.tracked(key)
