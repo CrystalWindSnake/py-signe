@@ -88,7 +88,7 @@ class Signal(Generic[_T]):
 
     @property
     def id(self):
-        return self.__id  # cov: no cover
+        return self.__id  # pragma: no cover
 
     @property
     def value(self):

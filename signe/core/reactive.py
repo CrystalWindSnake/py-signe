@@ -45,13 +45,13 @@ def track_all_deep(obj):
                 if is_reactive(value):
                     stack.append(value)
         else:
-            pass  # cov: no cover
+            pass  # pragma: no cover
 
 
 def track_all(obj, deep=False):
     executor = get_executor()
     if not executor.should_track():
-        return  # cov: no cover
+        return  # pragma: no cover
 
     if isinstance(obj, (DictProxy, ListProxy)):
         if deep:
@@ -65,7 +65,7 @@ def track_all(obj, deep=False):
             for key in _get_data_fields(obj):
                 getattr(obj, key)
     else:
-        pass
+        pass  # pragma: no cover
 
 
 def reactive(obj: T) -> T:
@@ -176,7 +176,7 @@ class DictProxy(UserDict):
     def __hash__(self) -> int:
         return hash(id(self))
 
-    def __eq__(self, __value: object) -> bool:
+    def __eq__(self, __value: object) -> bool:  # pragma: no cover
         if isinstance(__value, self.__class__):
             return self.__hash__() == __value.__hash__()
 
