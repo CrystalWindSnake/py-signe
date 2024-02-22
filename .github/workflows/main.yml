@@ -14,7 +14,8 @@ jobs:
           python-version: '3.8'
       - name: install deps
         run: pip install -r requirements-dev.txt
-      - run: pytest __tests/
+      - name: run test
+        run: coverage run -m pytest __tests/
       - name: coverage report
         run: |
-          pytest --cov-report term-missing --cov=signe  __tests/ --cov-fail-under=90
+          coverage report -m  

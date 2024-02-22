@@ -4,5 +4,5 @@ setuptools
 wheel
 mypy
 pytest
-pytest-cov
+coverage
 typing_extensions
