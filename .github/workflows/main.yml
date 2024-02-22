@@ -13,7 +13,7 @@ jobs:
         with:
           python-version: '3.8'
       - name: install deps
-        run: pip install -r requirements.txt
+        run: pip install -r requirements-dev.txt
       - run: pytest __tests/
       - name: coverage report
         run: |
