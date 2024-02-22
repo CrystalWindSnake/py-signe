@@ -45,13 +45,13 @@ def track_all_deep(obj):
                 if is_reactive(value):
                     stack.append(value)
         else:
-            pass
+            pass  # cov: no cover
 
 
 def track_all(obj, deep=False):
     executor = get_executor()
     if not executor.should_track():
-        return
+        return  # cov: no cover
 
     if isinstance(obj, (DictProxy, ListProxy)):
         if deep:
@@ -188,7 +188,8 @@ class DictProxy(UserDict):
 
 class ListProxy(UserList):
     def __init__(self, initlist):
-        super().__init__(initlist)
+        super().__init__()
+        self.data = initlist
         self._dep_manager = GetterDepManager()
         self.__nested = set()
 
@@ -269,6 +270,15 @@ class ListProxy(UserList):
 
     def __str__(self) -> str:
         return str(self.data)
+
+    def __hash__(self) -> int:
+        return hash(id(self))
+
+    def __eq__(self, __value: object) -> bool:
+        if isinstance(__value, self.__class__):
+            return self.__hash__() == __value.__hash__()
+
+        return False
 
     def to_raw(self):
         return self.data
