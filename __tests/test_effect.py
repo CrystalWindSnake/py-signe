@@ -423,9 +423,10 @@ class Test_effect_basic:
         obj["prop"] = "world"
         assert dummy == "world"
 
-    def test_not_be_triggered_by_mutating_a_property_which_is_used_in_an_inactive_branch(
+    def test_not_triggered_inactive_branch(
         self,
     ):
+        # test_not_be_triggered_by_mutating_a_property_which_is_used_in_an_inactive_branch
         dummy = None
         obj = reactive({"prop": "value", "run": True})
 

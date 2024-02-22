@@ -76,7 +76,8 @@ def test_should_release_with_computed():
     assert effect_rc.calledTimes == 4
 
 
-def test_should_not_release_computed_call_in_scope():
+def test_should_not_release_computed_call():
+    # test_should_not_release_computed_call_in_scope
     computed_rc = RefChecker()
     effect_rc = RefChecker()
 
