@@ -90,21 +90,11 @@ class Signal(Generic[_T]):
     def id(self):
         return self.__id
 
-    def get_value_without_track(self):
-        return self._value
-
-    @property
-    def is_signal(self) -> bool:
-        return True
-
     @property
     def value(self):
         self._dep_manager.tracked("value")
 
         return self._value
-
-    def confirm_state(self):
-        pass
 
     @value.setter
     def value(self, value: _T):
@@ -118,15 +108,6 @@ class Signal(Generic[_T]):
         self._value = new_value if use_direct else to_reactive(new_value)
 
         self._dep_manager.triggered("value", new_value, EffectState.NEED_UPDATE)
-
-    def __hash__(self) -> int:
-        return hash(self.id)
-
-    def __eq__(self, __value: object) -> bool:
-        if isinstance(__value, self.__class__):
-            return self.__hash__() == __value.__hash__()
-
-        return False
 
     def __repr__(self) -> str:
         return f"Signal(id= {self.id} , name = {self.__debug_name})"

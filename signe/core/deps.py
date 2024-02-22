@@ -29,9 +29,6 @@ class Dep:
     def remove_caller(self, caller: CallerProtocol):
         self._deps.remove(caller)
 
-    def mark_caller(self, caller: CallerProtocol, key):
-        self._deps.add(caller)
-
     def __hash__(self) -> int:
         return hash(self.__id)
 
