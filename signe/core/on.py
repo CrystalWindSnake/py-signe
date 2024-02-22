@@ -111,11 +111,6 @@ def on(
     def getter():
         return [g.get_value() for g in getters]
 
-    # targets = getters
-
-    # def getter_calls():
-    #     return [t.get_value_without_track() for t in targets]
-
     args_count = get_func_args_count(fn)
     prev_values = [None] * len(getters)
 

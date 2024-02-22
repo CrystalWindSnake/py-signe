@@ -16,7 +16,7 @@ from signe.core.helper import has_changed, is_object
 from signe.core.protocols import RawableProtocol
 from .context import get_executor
 from .batch import batch
-from weakref import WeakKeyDictionary, WeakValueDictionary, WeakSet
+from weakref import WeakKeyDictionary, WeakValueDictionary
 
 T = TypeVar("T")
 P = TypeVar("P")
