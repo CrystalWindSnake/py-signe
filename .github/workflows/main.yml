@@ -15,7 +15,9 @@ jobs:
       - name: install deps
         run: pip install -r requirements-dev.txt
       - name: run test
-        run: coverage run -m pytest __tests/
+        run: pytest __tests/
       - name: coverage report
         run: |
+          coverage run --source signe --parallel-mode -m pytest __tests/
+          coverage combine
           coverage report -m  

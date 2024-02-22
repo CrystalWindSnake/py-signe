@@ -11,6 +11,10 @@ tasks:
     - cls
     - pytest -v __tests 
 
+  test-cov:
+    - coverage run --source signe --parallel-mode -m pytest __tests/
+    - coverage combine
+    - coverage report -m
 
   dist: 
     - task: clean ## builds source and wheel package
