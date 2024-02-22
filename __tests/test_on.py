@@ -161,6 +161,24 @@ class Test_on:
         s.value = 99
         assert dummy == [1, 99]
 
+    def test_watch_on_reactive_list_in_class(self):
+        dummy = []
+
+        class Model:
+            def __init__(self) -> None:
+                self.values = [10, 20]
+
+        data = reactive(Model())
+
+        @on(lambda: data, deep=True)
+        def _():
+            dummy.append(len(data.values))
+
+        assert dummy == [2]
+
+        data.values.append(30)
+        assert dummy == [2, 3]
+
     def test_should_executed_twice(self):
         result = []
         num1 = signal(1)

@@ -16,7 +16,7 @@ from signe.core.helper import has_changed, is_object
 from signe.core.protocols import RawableProtocol
 from .context import get_executor
 from .batch import batch
-from weakref import WeakKeyDictionary, WeakValueDictionary
+from weakref import WeakKeyDictionary, WeakValueDictionary, WeakSet
 
 T = TypeVar("T")
 P = TypeVar("P")
@@ -286,6 +286,7 @@ class ListProxy(UserList):
 
 _instance_proxy_maps: WeakKeyDictionary = WeakKeyDictionary()
 _instance_dep_maps: WeakKeyDictionary = WeakKeyDictionary()
+_instance_nested: WeakKeyDictionary = WeakKeyDictionary()
 
 
 def _register_ins(
@@ -319,8 +320,9 @@ def _track_ins(proxy: InstanceProxy, key):
 
         dep_manager.tracked(key)
 
-        value = getattr(ins, key)
-
+        value = reactive(getattr(ins, key))
+        if _is_proxy(value):
+            _instance_nested[proxy] = value
         return value
 
 
