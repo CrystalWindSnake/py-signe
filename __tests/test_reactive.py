@@ -1,9 +1,13 @@
 from dataclasses import dataclass
-from signe import reactive, computed, effect, signal, to_raw
+from signe import reactive, computed, effect, signal, to_raw, to_value
 from . import utils
 
 
 class Test_base_case:
+    # def test_signal_base(self):
+    #     s = signal(1)
+    #     print(s)
+
     @utils.mark_todo
     def test_should_observe_class_method_invocations(self):
         class Model:
@@ -98,6 +102,36 @@ class Test_base_case:
         assert dummy == [100]
         data[0].inc_agg(99)
         assert dummy == [100, 199]
+
+    def test_dict_remove_pop(self):
+        dummy = []
+        data = signal({"a": 1, "b": 2})
+
+        @effect
+        def _():
+            dummy.append(len(data.value))
+
+        assert dummy == [2]
+        assert data.value.pop("b") == 2
+        assert dummy == [2, 1]
+
+        data.value.clear()
+        assert dummy == [2, 1, 0]
+
+    def test_list_pop_clear(self):
+        dummy = []
+        data = signal([1, 2, 3, 4])
+
+        @effect
+        def _():
+            dummy.append(len(data.value))
+
+        assert dummy == [4]
+        assert data.value.pop() == 4
+        assert dummy == [4, 3]
+
+        data.value.clear()
+        assert dummy == [4, 3, 0]
 
     def test_should_call_ins_method(self):
         class M:
@@ -226,3 +260,10 @@ class Test_to_raw:
 
         setattr(data.value[0], "name", "new")
         assert dummy == ["n1", "new"]
+
+
+class Test_to_value:
+    def test_to_value(self):
+        assert to_value(1) == 1
+        assert to_value(signal(1)) == 1
+        assert to_value(computed(lambda: 1)) == 1

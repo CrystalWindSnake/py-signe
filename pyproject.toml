@@ -12,4 +12,8 @@ parallel=true
 [tool.coverage.report]
 fail_under=95
 omit=["signe/core/protocols.py"]
-
+exclude_also=[
+    'def __repr__',
+    '^\s*...\s*$',
+    '# cov: no cover'
+]

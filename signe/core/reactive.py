@@ -168,12 +168,10 @@ class DictProxy(UserDict):
         self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
 
     def pop(self, i: int = -1) -> Any:
-        super().pop(i)
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+        return super().pop(i)
 
     def clear(self) -> None:
         super().clear()
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
 
     def __hash__(self) -> int:
         return hash(id(self))
@@ -247,12 +245,14 @@ class ListProxy(UserList):
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def pop(self, i: int = -1) -> Any:
-        super().pop(i)
+        value = super().pop(i)
 
         @batch
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+        return value
 
     def clear(self) -> None:
         super().clear()
