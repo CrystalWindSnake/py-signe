@@ -40,6 +40,7 @@ class Computed(Generic[_T]):
         priority_level=1,
         debug_name: Optional[str] = None,
         scope: Optional[IScope] = None,
+        capture_parent_effect=True,
     ) -> None:
         self.__id = self._id_gen.new()
         self._value = None
@@ -60,6 +61,7 @@ class Computed(Generic[_T]):
             scope=scope,
             state=EffectState.COMPUTED_INIT,
             debug_name=debug_name,
+            capture_parent_effect=capture_parent_effect,
         )
         self._dep_manager = GetterDepManager(scheduler)
         if scope:
