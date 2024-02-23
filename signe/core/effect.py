@@ -69,9 +69,10 @@ class Effect(Generic[_T]):
 
         self._sub_effects: List[Effect] = []
 
-        running_caller = self._scheduler.get_running_caller()
-        if running_caller and running_caller.is_effect:
-            cast(Effect, running_caller).made_sub_effect(self)
+        if capture_parent_effect:
+            running_caller = self._scheduler.get_running_caller()
+            if running_caller and running_caller.is_effect:
+                cast(Effect, running_caller).made_sub_effect(self)
 
     @property
     def id(self):
