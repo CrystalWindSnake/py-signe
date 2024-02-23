@@ -1,8 +1,8 @@
 from __future__ import annotations
 from typing import (
     Any,
+    Dict,
     List,
-    Set,
     Callable,
     Optional,
     TypeVar,
@@ -57,7 +57,7 @@ class Effect(Generic[_T]):
         self._fn = fn
         self._trigger_fn = trigger_fn
         self._scheduler_fn = scheduler_fn
-        self._upstream_refs: Set[Dep] = set()
+        self._upstream_refs: Dict[Dep, None] = {}
         self._debug_name = debug_name
         self._debug_trigger = debug_trigger
 
@@ -92,10 +92,10 @@ class Effect(Generic[_T]):
         self._state = EffectState.QUERYING
         # self._executor.pause_track()
 
-        for dep in self._upstream_refs:
+        for dep in self._upstream_refs.keys():
             if dep.computed:
                 dep.computed.confirm_state()
-                if self._state >= EffectState.NEED_UPDATE:
+                if self._state <= EffectState.NEED_UPDATE:
                     break
 
         if self._state == EffectState.QUERYING:
@@ -124,7 +124,7 @@ class Effect(Generic[_T]):
         scheduler.reset_scheduling()
 
     def add_upstream_ref(self, dep: Dep):
-        self._upstream_refs.add(dep)
+        self._upstream_refs[dep] = None
 
     def update_state(self, state: EffectState):
         self._state = state
