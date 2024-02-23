@@ -81,11 +81,11 @@ class Signal(Generic[_T]):
     ) -> None:
         super().__init__()
         self.__id = Signal._id_gen.new()
+        self._scheduler = scheduler or get_default_scheduler()
         self._is_shallow = is_shallow
-        self._value = value if is_shallow else to_reactive(value)
+        self._value = value if is_shallow else to_reactive(value, self._scheduler)
         self._raw_value = value if is_shallow else to_raw(value)
 
-        self._scheduler = scheduler or get_default_scheduler()
         self._dep_manager = GetterDepManager(self._scheduler)
 
         self.option = option or SignalOption[_T]()
@@ -111,7 +111,9 @@ class Signal(Generic[_T]):
             return
 
         self._raw_value = new_value
-        self._value = new_value if use_direct else to_reactive(new_value)
+        self._value = (
+            new_value if use_direct else to_reactive(new_value, self._scheduler)
+        )
 
         self._dep_manager.triggered("value", new_value, EffectState.NEED_UPDATE)
 

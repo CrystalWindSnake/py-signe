@@ -103,8 +103,8 @@ def reactive(
     # return obj
 
 
-def to_reactive(obj: T) -> T:
-    res = reactive(obj) if is_object(obj) else obj
+def to_reactive(obj: T, scheduler: ExecutionScheduler) -> T:
+    res = reactive(obj, scheduler) if is_object(obj) else obj
     return cast(T, res)
 
 
@@ -135,10 +135,11 @@ class DictProxy(UserDict):
         self.data = data
         self._dep_manager = GetterDepManager(scheduler)
         self.__nested = set()
+        self._scheduler = scheduler
 
     def __getitem__(self, key):
         self._dep_manager.tracked(key)
-        res = reactive(self.data[key])
+        res = reactive(self.data[key], self._scheduler)
         if _is_proxy(res):
             self.__nested.add(res)
         return res
@@ -211,10 +212,11 @@ class ListProxy(UserList):
         self.data = initlist
         self._dep_manager = GetterDepManager(scheduler)
         self.__nested = set()
+        self._scheduler = scheduler
 
     def __getitem__(self, i):
         self._dep_manager.tracked(i)
-        res = reactive(self.data[i])
+        res = reactive(self.data[i], self._scheduler)
         if _is_proxy(res):
             self.__nested.add(res)
         return res
@@ -321,7 +323,10 @@ def _is_instance_method(obj, key: str):
     return isinstance(getattr(obj, key), Callable)
 
 
-def _track_ins(proxy: InstanceProxy, key):
+def _track_ins(
+    proxy: InstanceProxy,
+    key,
+):
     ins = _instance_proxy_maps.get(proxy)
     if _is_instance_method(ins, key):
         method = getattr(ins, key)
@@ -340,7 +345,7 @@ def _track_ins(proxy: InstanceProxy, key):
 
         dep_manager.tracked(key)
 
-        value = reactive(getattr(ins, key))
+        value = reactive(getattr(ins, key), dep_manager._scheduler)
         if _is_proxy(value):
             _instance_nested[proxy] = value
         return value
