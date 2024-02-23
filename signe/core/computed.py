@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import (
+    TYPE_CHECKING,
     TypeVar,
     Callable,
     Optional,
@@ -9,6 +10,7 @@ from typing import (
     overload,
 )
 from signe.core.consts import EffectState
+from signe.core.context import get_default_scheduler
 from signe.core.deps import GetterDepManager
 from signe.core.helper import has_changed
 from signe.core.idGenerator import IdGen
@@ -17,6 +19,10 @@ from signe.core.protocols import ComputedResultProtocol, IScope
 
 from .effect import Effect
 from .scope import _GLOBAL_SCOPE_MANAGER
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .runtime import ExecutionScheduler
 
 
 _T = TypeVar("_T")
@@ -28,6 +34,8 @@ class Computed(Generic[_T]):
     def __init__(
         self,
         fn: Callable[[], _T],
+        *,
+        scheduler: ExecutionScheduler,
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
@@ -45,14 +53,15 @@ class Computed(Generic[_T]):
 
         self._effect = Effect(
             getter,
-            trigger_fn,
+            scheduler=scheduler,
+            trigger_fn=trigger_fn,
             # immediate=False,
             debug_trigger=debug_trigger,
             scope=scope,
             state=EffectState.COMPUTED_INIT,
             debug_name=debug_name,
         )
-        self._dep_manager = GetterDepManager()
+        self._dep_manager = GetterDepManager(scheduler)
         if scope:
             scope.add_disposable(self)
 
@@ -111,6 +120,7 @@ def computed(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> _T_computed_setter:
     ...
 
@@ -123,6 +133,7 @@ def computed(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> _T_computed[_T]:
     ...
 
@@ -134,11 +145,13 @@ def computed(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> Union[_T_computed_setter, _T_computed[_T]]:
     kws = {
         "priority_level": priority_level,
         "debug_trigger": debug_trigger,
         "debug_name": debug_name,
+        "scheduler": scheduler or get_default_scheduler(),
     }
 
     if fn:

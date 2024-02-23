@@ -1,7 +1,7 @@
 from signe.core.signal import Signal, signal, to_value, is_signal
 from signe.core.effect import Effect, effect, stop
 from signe.core.computed import Computed, computed
-from signe.core.runtime import Executor
+from signe.core.runtime import ExecutionScheduler
 from signe.core.batch import batch
 from signe.core.on import on, WatchedState
 from signe.core.cleanup import cleanup
@@ -13,7 +13,7 @@ __all__ = [
     "Signal",
     "Effect",
     "Computed",
-    "Executor",
+    "ExecutionScheduler",
     "signal",
     "effect",
     "computed",
