@@ -12,6 +12,29 @@ class Test_effect_basic:
         effect(fn_spy)
         assert fn_spy.calledTimes == 1
 
+    def test_trigger_multiple_computed(self):
+        fn_spy = utils.fn()
+
+        s = signal(1)
+
+        @computed
+        def cp1():
+            return s.value < 5
+
+        @computed
+        def cp2():
+            return s.value < 3
+
+        @effect
+        def _():
+            cp1.value
+            cp2.value
+            fn_spy()
+
+        assert fn_spy.calledTimes == 1
+        s.value = 4
+        assert fn_spy.calledTimes == 2
+
     def test_no_exec_has_not_changed(self):
         count = signal(0)
 
