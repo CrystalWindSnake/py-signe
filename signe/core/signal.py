@@ -1,5 +1,6 @@
 from __future__ import annotations
 from typing import (
+    TYPE_CHECKING,
     TypeVar,
     Generic,
     Callable,
@@ -15,10 +16,14 @@ from signe.core.idGenerator import IdGen
 
 from signe.core.deps import GetterDepManager
 from signe.core.protocols import SignalResultProtocol
-from .context import get_executor
+from .context import get_default_scheduler
 from .types import TMaybeSignal, TSignal
 from collections.abc import Hashable
 import operator
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .runtime import ExecutionScheduler
 
 _T = TypeVar("_T")
 
@@ -56,7 +61,7 @@ class Signal(Generic[_T]):
         "_is_shallow",
         "_value",
         "_raw_value",
-        "_executor",
+        "_scheduler",
         "_dep_manager",
         "option",
         "__debug_name",
@@ -68,9 +73,10 @@ class Signal(Generic[_T]):
     def __init__(
         self,
         value: _T,
+        *,
+        scheduler: ExecutionScheduler,
         option: Optional[SignalOption[_T]] = None,
         debug_name: Optional[str] = None,
-        *,
         is_shallow: bool,
     ) -> None:
         super().__init__()
@@ -79,8 +85,8 @@ class Signal(Generic[_T]):
         self._value = value if is_shallow else to_reactive(value)
         self._raw_value = value if is_shallow else to_raw(value)
 
-        self._executor = get_executor()
-        self._dep_manager = GetterDepManager()
+        self._scheduler = scheduler or get_default_scheduler()
+        self._dep_manager = GetterDepManager(self._scheduler)
 
         self.option = option or SignalOption[_T]()
         self.__debug_name = debug_name
@@ -118,6 +124,8 @@ def signal(
     value: SignalResultProtocol[_T],
     comp: Union[TSignalOptionInitComp[_T], bool] = None,
     debug_name: Optional[str] = None,
+    *,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> SignalResultProtocol[_T]:
     ...
 
@@ -129,6 +137,7 @@ def signal(
     debug_name: Optional[str] = None,
     *,
     is_shallow=False,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> SignalResultProtocol[_T]:
     ...
 
@@ -140,6 +149,7 @@ def signal(
     debug_name: Optional[str] = None,
     *,
     is_shallow=False,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> SignalResultProtocol[_T]:
     ...
 
@@ -150,10 +160,17 @@ def signal(
     debug_name: Optional[str] = None,
     *,
     is_shallow=False,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> SignalResultProtocol[_T]:
     if isinstance(value, Signal):
         return value
-    signal = Signal(value, SignalOption(comp), debug_name, is_shallow=is_shallow)
+    signal = Signal(
+        value,
+        scheduler=scheduler or get_default_scheduler(),
+        option=SignalOption(comp),
+        debug_name=debug_name,
+        is_shallow=is_shallow,
+    )
     return cast(SignalResultProtocol[_T], signal)
 
 

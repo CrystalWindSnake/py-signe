@@ -1,4 +1,5 @@
 from dataclasses import dataclass
+from signe.core.context import get_default_scheduler
 from signe.core.effect import Effect
 from signe.core.helper import has_changed, get_func_args_count
 from signe.core.reactive import is_reactive, track_all
@@ -20,13 +21,21 @@ from typing import (
 from .types import TGetter, TSignal
 from .signal import is_signal
 
+from .runtime import ExecutionScheduler
+
+
 T = TypeVar("T")
 
 
 class OnGetterModel(Generic[T]):
     __slots__ = ("_ref", "_fn")
 
-    def __init__(self, ref: Union[TSignal, Callable[[], T]], deep=False) -> None:
+    def __init__(
+        self,
+        ref: Union[TSignal, Callable[[], T]],
+        scheduler: ExecutionScheduler,
+        deep=False,
+    ) -> None:
         self._ref = ref
 
         # with track
@@ -35,7 +44,7 @@ class OnGetterModel(Generic[T]):
             def getter():
                 value = self._ref.value
                 if is_reactive(value):
-                    track_all(value, deep)
+                    track_all(value, scheduler, deep)
                 return value
 
             self._fn = getter
@@ -43,7 +52,7 @@ class OnGetterModel(Generic[T]):
 
             def getter_reactive_fn():
                 obj = cast(Callable, ref)()
-                track_all(obj, deep)
+                track_all(obj, scheduler, deep)
                 return obj
 
             self._fn = getter_reactive_fn
@@ -68,6 +77,7 @@ def on(
     effect_kws: Optional[Dict[str, Any]] = None,
     deep=False,
     scope: Optional[IScope] = None,
+    scheduler: Optional[ExecutionScheduler] = None,
 ):
     ...
 
@@ -80,6 +90,7 @@ def on(
     onchanges=False,
     deep=False,
     scope: Optional[IScope] = None,
+    scheduler: Optional[ExecutionScheduler] = None,
 ):
     ...
 
@@ -92,8 +103,14 @@ def on(
     effect_kws: Optional[Dict[str, Any]] = None,
     deep=False,
     scope: Optional[IScope] = None,
+    scheduler: Optional[ExecutionScheduler] = None,
 ):
-    call_kws = {"onchanges": onchanges, "effect_kws": effect_kws, "deep": deep}
+    call_kws = {
+        "onchanges": onchanges,
+        "effect_kws": effect_kws,
+        "deep": deep,
+        "scheduler": scheduler or get_default_scheduler(),
+    }
 
     if fn is None:
 
@@ -104,9 +121,9 @@ def on(
 
     getters: List[OnGetterModel] = []
     if isinstance(source, Sequence):
-        getters = [OnGetterModel(g, deep) for g in source]  # type: ignore
+        getters = [OnGetterModel(g, call_kws["scheduler"], deep) for g in source]  # type: ignore
     else:
-        getters = [OnGetterModel(source, deep)]  # type: ignore
+        getters = [OnGetterModel(source, call_kws["scheduler"], deep)]  # type: ignore
 
     def getter():
         return [g.get_value() for g in getters]
@@ -135,7 +152,11 @@ def on(
     scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
 
     effect = Effect(
-        getter, scheduler_fn=scheduler_fn, **(effect_kws or {}), scope=scope
+        getter,
+        scheduler=scheduler or get_default_scheduler(),
+        scheduler_fn=scheduler_fn,
+        **(effect_kws or {}),
+        scope=scope,
     )
 
     if onchanges:

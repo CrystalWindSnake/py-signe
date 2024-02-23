@@ -19,11 +19,12 @@ from signe.core.idGenerator import IdGen
 from signe.core.protocols import IScope
 from signe.core.scope import _GLOBAL_SCOPE_MANAGER
 from .consts import EffectState
-from .context import get_executor
+from .context import get_default_scheduler
 from functools import partial
 
 if TYPE_CHECKING:  # pragma: no cover
     from signe.core.deps import Dep
+    from .runtime import ExecutionScheduler
 
 _T = TypeVar("_T")
 
@@ -39,6 +40,8 @@ class Effect(Generic[_T]):
     def __init__(
         self,
         fn: Callable[[], _T],
+        *,
+        scheduler: ExecutionScheduler,
         trigger_fn: Optional[Callable[[Effect], None]] = None,
         scheduler_fn: Optional[Callable[[Effect], None]] = None,
         debug_trigger: Optional[Callable] = None,
@@ -49,7 +52,7 @@ class Effect(Generic[_T]):
         state: Optional[EffectState] = None,
     ) -> None:
         self.__id = self._id_gen.new()
-        self._executor = get_executor()
+        self._scheduler = scheduler
         self._active = True
         self._fn = fn
         self._trigger_fn = trigger_fn
@@ -66,7 +69,7 @@ class Effect(Generic[_T]):
 
         self._sub_effects: List[Effect] = []
 
-        running_caller = self._executor.get_running_caller()
+        running_caller = self._scheduler.get_running_caller()
         if running_caller and running_caller.is_effect:
             cast(Effect, running_caller).made_sub_effect(self)
 
@@ -108,7 +111,7 @@ class Effect(Generic[_T]):
         self._sub_effects.append(sub)
 
     def trigger(self, state: EffectState):
-        scheduler = self._executor.get_current_scheduler()
+        scheduler = self._scheduler
         scheduler.pause_scheduling()
         self._state = state
 
@@ -116,9 +119,7 @@ class Effect(Generic[_T]):
             self._trigger_fn(self)
 
         if self._scheduler_fn:
-            self._executor.get_current_scheduler().push_scheduler_fn(
-                partial(self._scheduler_fn, self)
-            )
+            self._scheduler.push_scheduler_fn(partial(self._scheduler_fn, self))
 
         scheduler.reset_scheduling()
 
@@ -134,7 +135,7 @@ class Effect(Generic[_T]):
 
         try:
             self._exec_cleanups()
-            self._executor.mark_running_caller(self)
+            self._scheduler.mark_running_caller(self)
             self._state = EffectState.RUNNING
 
             self._clear_all_deps()
@@ -148,7 +149,7 @@ class Effect(Generic[_T]):
 
         finally:
             self._state = EffectState.STALE
-            self._executor.reset_running_caller(self)
+            self._scheduler.reset_running_caller(self)
 
     def stop(self):
         self._clear_all_deps()
@@ -208,6 +209,7 @@ def effect(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> _TEffect_Fn[None]:
     ...
 
@@ -221,6 +223,7 @@ def effect(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> Effect:
     ...
 
@@ -233,12 +236,14 @@ def effect(
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[IScope] = None,
+    scheduler: Optional[ExecutionScheduler] = None,
 ) -> Union[_TEffect_Fn[None], Effect]:
     kws = {
         "priority_level": priority_level,
         "debug_trigger": debug_trigger,
         "debug_name": debug_name,
         "immediate": immediate,
+        "scheduler": scheduler or get_default_scheduler(),
     }
 
     if fn:

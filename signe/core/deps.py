@@ -3,13 +3,14 @@ from typing import Any, Dict, Optional, Set, TYPE_CHECKING
 from signe.core.idGenerator import IdGen
 
 
-from .context import get_executor
+from .context import get_default_scheduler
 from .consts import EffectState
 
 
 if TYPE_CHECKING:  # pragma: no cover
     from .computed import Computed
     from signe.core.protocols import CallerProtocol
+    from .runtime import ExecutionScheduler
 
 
 class Dep:
@@ -40,16 +41,19 @@ class Dep:
 
 
 class GetterDepManager:
-    def __init__(self) -> None:
-        self._executor = get_executor()
+    def __init__(
+        self,
+        scheduler: ExecutionScheduler,
+    ) -> None:
+        self._scheduler = scheduler
         self._deps_map: Dict[str, Dep] = {}
 
     def tracked(
         self, key, value: Optional[Any] = None, computed: Optional[Computed] = None
     ):
-        running_caller = self._executor.get_running_caller()
+        running_caller = self._scheduler.get_running_caller()
 
-        if not (running_caller and self._executor.should_track()):
+        if not (running_caller and self._scheduler.should_track()):
             return
 
         dep = self._deps_map.get(key)
@@ -65,7 +69,7 @@ class GetterDepManager:
         if not dep:
             return
 
-        scheduler = self._executor.get_current_scheduler()
+        scheduler = self._scheduler
 
         for caller in dep.get_callers():
             caller.trigger(state)

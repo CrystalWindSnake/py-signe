@@ -1,22 +1,29 @@
 from __future__ import annotations
 from collections import UserDict, UserList
 from typing import (
+    TYPE_CHECKING,
     Any,
     Callable,
     Iterator,
     List,
     Mapping,
+    Optional,
     TypeVar,
     cast,
     Iterable,
 )
 from signe.core.consts import EffectState
+from signe.core.context import get_default_scheduler
 from signe.core.deps import GetterDepManager
 from signe.core.helper import has_changed, is_object
 from signe.core.protocols import RawableProtocol
-from .context import get_executor
 from .batch import batch
 from weakref import WeakKeyDictionary, WeakValueDictionary
+
+
+if TYPE_CHECKING:  # pragma: no cover
+    from .runtime import ExecutionScheduler
+
 
 T = TypeVar("T")
 P = TypeVar("P")
@@ -48,9 +55,8 @@ def track_all_deep(obj):
             pass  # pragma: no cover
 
 
-def track_all(obj, deep=False):
-    executor = get_executor()
-    if not executor.should_track():
+def track_all(obj, scheduler: ExecutionScheduler, deep=False):
+    if not scheduler.should_track():
         return  # pragma: no cover
 
     if isinstance(obj, (DictProxy, ListProxy)):
@@ -68,7 +74,10 @@ def track_all(obj, deep=False):
         pass  # pragma: no cover
 
 
-def reactive(obj: T) -> T:
+def reactive(
+    obj: T,
+    scheduler: Optional[ExecutionScheduler] = None,
+) -> T:
     if not is_object(obj) or is_reactive(obj):
         return cast(T, obj)
 
@@ -78,13 +87,15 @@ def reactive(obj: T) -> T:
     if proxy:
         return proxy  # type: ignore
 
+    scheduler = scheduler or get_default_scheduler()
+
     if isinstance(obj, Mapping):
-        proxy = DictProxy(obj)
+        proxy = DictProxy(obj, scheduler)
 
     elif isinstance(obj, List):
-        proxy = ListProxy(obj)
+        proxy = ListProxy(obj, scheduler)
     else:
-        proxy = InstanceProxy(obj)
+        proxy = InstanceProxy(obj, scheduler)
 
     _proxy_maps[obj_id] = proxy
     return cast(T, proxy)
@@ -115,10 +126,14 @@ def _is_proxy(obj):
 
 
 class DictProxy(UserDict):
-    def __init__(self, data):
+    def __init__(
+        self,
+        data,
+        scheduler: ExecutionScheduler,
+    ):
         super().__init__()
         self.data = data
-        self._dep_manager = GetterDepManager()
+        self._dep_manager = GetterDepManager(scheduler)
         self.__nested = set()
 
     def __getitem__(self, key):
@@ -187,10 +202,14 @@ class DictProxy(UserDict):
 
 
 class ListProxy(UserList):
-    def __init__(self, initlist):
+    def __init__(
+        self,
+        initlist,
+        scheduler: ExecutionScheduler,
+    ):
         super().__init__()
         self.data = initlist
-        self._dep_manager = GetterDepManager()
+        self._dep_manager = GetterDepManager(scheduler)
         self.__nested = set()
 
     def __getitem__(self, i):
@@ -292,9 +311,10 @@ _instance_nested: WeakKeyDictionary = WeakKeyDictionary()
 def _register_ins(
     proxy: InstanceProxy,
     ins,
+    scheduler: ExecutionScheduler,
 ):
     _instance_proxy_maps[proxy] = ins
-    _instance_dep_maps[proxy] = GetterDepManager()
+    _instance_dep_maps[proxy] = GetterDepManager(scheduler)
 
 
 def _is_instance_method(obj, key: str):
@@ -343,8 +363,12 @@ def _get_data_fields(proxy: InstanceProxy):
 
 
 class InstanceProxy:
-    def __init__(self, ins) -> None:
-        _register_ins(self, ins)
+    def __init__(
+        self,
+        ins,
+        scheduler: ExecutionScheduler,
+    ) -> None:
+        _register_ins(self, ins, scheduler)
 
     def __getattr__(self, _name: str) -> Any:
         value = _track_ins(self, _name)
