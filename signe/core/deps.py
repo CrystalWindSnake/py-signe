@@ -3,7 +3,6 @@ from typing import Any, Dict, Optional, Set, TYPE_CHECKING
 from signe.core.idGenerator import IdGen
 
 
-from .context import get_default_scheduler
 from .consts import EffectState
 
 
