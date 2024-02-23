@@ -10,6 +10,8 @@ tasks:
   test:
     - cls
     - pytest -v __tests 
+  lint:
+   - ruff check .
 
   test-cov:
     - coverage run  -m pytest __tests/
