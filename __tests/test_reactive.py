@@ -110,6 +110,20 @@ class Test_base_case:
         data.value.clear()
         assert dummy == [2, 1, 0]
 
+    def test_list_(self):
+        spyfn = utils.fn()
+        data = signal([1, 2, 3, 4])
+
+        @effect
+        def _():
+            spyfn()
+            for i in data.value:
+                print(i)
+
+        assert spyfn.calledTimes == 1
+        data.value.reverse()
+        assert spyfn.calledTimes == 2
+
     def test_list_pop_clear_remove(self):
         dummy = []
         data = signal([1, 2, 3, 4])

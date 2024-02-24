@@ -258,6 +258,14 @@ class ListProxy(UserList):
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
+    def reverse(self) -> None:
+        self.data.reverse()
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
     def remove(self, item: Any) -> None:
         super().remove(to_raw(item))
 
