@@ -301,6 +301,8 @@ class ListProxy(UserList):
         return result
 
     def __str__(self) -> str:
+        self._dep_manager.tracked("__iter__")
+
         return str(self.data)
 
     def __hash__(self) -> int:

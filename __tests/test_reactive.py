@@ -115,6 +115,7 @@ class Test_base_case:
         spy_len = utils.fn()
         spy_get0 = utils.fn()
         spy_get1 = utils.fn()
+        spy_print_value = utils.fn()
 
         data = signal([1, 2, 3])
 
@@ -143,12 +144,19 @@ class Test_base_case:
             spy_get1()
             print(data.value[1])
 
+        # should  trigger
+        @effect
+        def _():
+            spy_print_value()
+            print(data.value)
+
         data.value.reverse()
 
         assert spy_for.calledTimes == 2
         assert spy_len.calledTimes == 1
         assert spy_get0.calledTimes == 2
         assert spy_get1.calledTimes == 1
+        assert spy_print_value.calledTimes == 2
 
     def test_list_reverse_by_dict(self):
         spy_get0 = utils.fn()
