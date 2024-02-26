@@ -15,15 +15,15 @@ from signe.core.deps import GetterDepManager
 from signe.core.helper import has_changed
 from signe.core.idGenerator import IdGen
 
-from signe.core.protocols import ComputedResultProtocol, IScope
+from signe.core.protocols import ComputedResultProtocol
 
 from .effect import Effect
-from .scope import _GLOBAL_SCOPE_MANAGER
+# from .scope import _GLOBAL_SCOPE_MANAGER
 
 
 if TYPE_CHECKING:  # pragma: no cover
     from .runtime import ExecutionScheduler
-
+    from .scope import Scope
 
 _T = TypeVar("_T")
 
@@ -39,7 +39,7 @@ class Computed(Generic[_T]):
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
-        scope: Optional[IScope] = None,
+        scope: Optional[Scope] = None,
         capture_parent_effect=True,
     ) -> None:
         self.__id = self._id_gen.new()
@@ -121,7 +121,7 @@ def computed(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
-    scope: Optional[IScope] = None,
+    scope: Optional[Scope] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> _T_computed_setter:
     ...
@@ -134,7 +134,7 @@ def computed(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
-    scope: Optional[IScope] = None,
+    scope: Optional[Scope] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> _T_computed[_T]:
     ...
@@ -146,7 +146,7 @@ def computed(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
-    scope: Optional[IScope] = None,
+    scope: Optional[Scope] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> Union[_T_computed_setter, _T_computed[_T]]:
     kws = {
@@ -157,7 +157,7 @@ def computed(
     }
 
     if fn:
-        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
+        # scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
         cp = Computed(fn, **kws, scope=scope)
         return cast(ComputedResultProtocol[_T], cp)
     else:

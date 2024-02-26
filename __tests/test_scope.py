@@ -51,8 +51,10 @@ def test_should_release_with_computed():
     num = signal(1)
 
     def temp_run(x):
-        with scope():
+        current_scope = scope()
 
+        @current_scope.run
+        def _():
             @computed
             def cp_1():
                 print(x)
@@ -66,6 +68,8 @@ def test_should_release_with_computed():
                 cp_1.value
 
             effect_rc.collect(eff1)
+
+        current_scope.dispose()
 
     temp_run(1)
     temp_run(2)
@@ -92,13 +96,17 @@ def test_should_not_release_computed_call():
     computed_rc.collect(cp_1)
 
     def temp_run():
-        with scope():
+        current_scope = scope()
 
+        @current_scope.run
+        def _():
             @effect
             def ef1():
                 cp_1.value
 
             effect_rc.collect(ef1)
+
+        current_scope.dispose()
 
     temp_run()
 
@@ -128,8 +136,10 @@ def test_nested_scope():
     signal_rc.collect(num)
 
     def temp_run(x):
-        with scope():
+        current_scope = scope()
 
+        @current_scope.run
+        def _():
             @computed
             def cp_1():
                 print(x)
@@ -138,8 +148,10 @@ def test_nested_scope():
             computed_rc.collect(cp_1)
 
             def inner_fn():
-                with scope():
+                nested_scope = scope()
 
+                @nested_scope.run
+                def _():
                     @computed
                     def cp_2():
                         return cp_1.value
@@ -148,7 +160,12 @@ def test_nested_scope():
 
                     computed_rc.collect(cp_2)
 
+                nested_scope.dispose()
+
             inner_fn()
+
+        current_scope.dispose()
+
         gc.collect()
 
     assert signal_rc.calledTimes == 0
