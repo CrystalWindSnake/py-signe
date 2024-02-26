@@ -15,9 +15,9 @@ from typing import (
 
 
 from signe.core.idGenerator import IdGen
+from signe.core.scope import Scope, mark_with_scope
 
-from signe.core.protocols import IScope
-from signe.core.scope import _GLOBAL_SCOPE_MANAGER
+# from signe.core.scope import _GLOBAL_SCOPE_MANAGER
 from .consts import EffectState
 from .context import get_default_scheduler
 from functools import partial
@@ -25,6 +25,7 @@ from functools import partial
 if TYPE_CHECKING:  # pragma: no cover
     from signe.core.deps import Dep
     from .runtime import ExecutionScheduler
+
 
 _T = TypeVar("_T")
 
@@ -48,7 +49,7 @@ class Effect(Generic[_T]):
         priority_level=1,
         debug_name: Optional[str] = None,
         capture_parent_effect=True,
-        scope: Optional[IScope] = None,
+        scope: Optional[Scope] = None,
         state: Optional[EffectState] = None,
     ) -> None:
         self.__id = self._id_gen.new()
@@ -64,8 +65,7 @@ class Effect(Generic[_T]):
         self._state: EffectState = state or EffectState.NEED_UPDATE
         self._cleanups: List[Callable[[], None]] = []
 
-        if scope:
-            scope.add_disposable(self)
+        mark_with_scope(self, scope)
 
         self._sub_effects: List[Effect] = []
 
@@ -209,7 +209,7 @@ def effect(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
-    scope: Optional[IScope] = None,
+    scope: Optional[Scope] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> _TEffect_Fn[None]:
     ...
@@ -223,7 +223,7 @@ def effect(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
-    scope: Optional[IScope] = None,
+    scope: Optional[Scope] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> Effect:
     ...
@@ -236,7 +236,7 @@ def effect(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
-    scope: Optional[IScope] = None,
+    scope: Optional[Scope] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> Union[_TEffect_Fn[None], Effect]:
     kws = {
@@ -251,7 +251,7 @@ def effect(
         if isinstance(fn, Effect):
             fn = fn._fn
 
-        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
+        # scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
         # executor = get_executor()
 
         def scheduler_fn(effect: Effect):
