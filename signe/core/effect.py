@@ -107,6 +107,8 @@ class Effect(Generic[_T]):
         # self._executor.reset_track()
 
     def is_need_update(self):
+        if not self._active:
+            return False
         self.calc_state()
         return self.state <= EffectState.NEED_UPDATE
 
@@ -155,8 +157,7 @@ class Effect(Generic[_T]):
             self._scheduler.reset_running_caller(self)
 
     def stop(self):
-        self._clear_all_deps()
-        self._active = False
+        self.dispose()
 
     def _clear_all_deps(self):
         for dep in self._upstream_refs:
@@ -165,6 +166,7 @@ class Effect(Generic[_T]):
         self._upstream_refs.clear()
 
     def dispose(self):
+        self._active = False
         self._clear_all_deps()
         self._exec_cleanups()
         self._dispose_sub_effects()
