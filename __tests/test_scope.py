@@ -41,6 +41,7 @@ def test_base():
         child_scope2 = scope()
 
         child_scope1.dispose()
+        child_scope2.dispose()
 
     parent_scope.dispose()
 
