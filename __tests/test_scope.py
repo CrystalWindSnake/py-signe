@@ -31,6 +31,20 @@ class RefChecker:
         return self._spy.calledTimes
 
 
+def test_base():
+    parent_scope = scope()
+
+    @parent_scope.run
+    def _():
+        child_scope1 = scope()
+
+        child_scope2 = scope()
+
+        child_scope1.dispose()
+
+    parent_scope.dispose()
+
+
 def test_should_release_signal():
     rc = RefChecker()
 

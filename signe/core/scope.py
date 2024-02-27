@@ -27,7 +27,7 @@ class Scope:
         self._parent = suite._ACTIVE_SCOPE
         if not detached and suite._ACTIVE_SCOPE:
             suite._ACTIVE_SCOPE._scopes.append(self)
-            self._index = len(suite._ACTIVE_SCOPE._scopes)
+            self._index = len(suite._ACTIVE_SCOPE._scopes) - 1
 
     @property
     def active(self):
