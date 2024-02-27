@@ -3,7 +3,7 @@ from signe.core.context import get_default_scheduler
 from signe.core.effect import Effect
 from signe.core.helper import has_changed, get_func_args_count
 from signe.core.reactive import is_reactive, track_all
-from signe.core.scope import Scope
+from signe.core.scope import Scope, _DEFAULT_SCOPE_SUITE, ScopeSuite
 from typing import (
     Any,
     Dict,
@@ -76,7 +76,7 @@ def on(
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
     deep=False,
-    scope: Optional[Scope] = None,
+    scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ):
     ...
@@ -89,7 +89,7 @@ def on(
     *,
     onchanges=False,
     deep=False,
-    scope: Optional[Scope] = None,
+    scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ):
     ...
@@ -102,7 +102,7 @@ def on(
     onchanges=False,
     effect_kws: Optional[Dict[str, Any]] = None,
     deep=False,
-    scope: Optional[Scope] = None,
+    scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ):
     call_kws = {
@@ -149,14 +149,12 @@ def on(
 
         prev_values = new_values
 
-    # scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
-
     effect = Effect(
         getter,
         scheduler=scheduler or get_default_scheduler(),
         scheduler_fn=scheduler_fn,
         **(effect_kws or {}),
-        scope=scope,
+        scope=scope or _DEFAULT_SCOPE_SUITE,
     )
 
     if onchanges:

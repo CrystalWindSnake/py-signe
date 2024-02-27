@@ -1,5 +1,5 @@
 from . import utils
-from signe import signal, effect, computed, scope
+from signe import signal, effect, computed, scope, on
 import gc
 import weakref
 import logging
@@ -47,6 +47,7 @@ def test_should_release_signal():
 def test_should_release_with_computed():
     computed_rc = RefChecker()
     effect_rc = RefChecker()
+    on_rc = RefChecker()
 
     num = signal(1)
 
@@ -69,6 +70,13 @@ def test_should_release_with_computed():
 
             effect_rc.collect(eff1)
 
+            @on
+            def on_spy():
+                pass
+                cp_1.value
+
+            on_rc.collect(on_spy)
+
         current_scope.dispose()
 
     temp_run(1)
@@ -78,6 +86,7 @@ def test_should_release_with_computed():
     gc.collect()
     assert computed_rc.calledTimes == 4
     assert effect_rc.calledTimes == 4
+    assert on_rc.calledTimes == 4
 
 
 def test_should_not_release_computed_call():

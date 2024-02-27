@@ -10,11 +10,10 @@ if TYPE_CHECKING:  # pragma: no cover
 
 _T = TypeVar("_T")
 
-_ACTIVE_SCOPE: Optional[Scope] = None
-
 
 class Scope:
-    def __init__(self, detached=False) -> None:
+    def __init__(self, suite: ScopeSuite, detached=False) -> None:
+        self._suite = suite
         self._active = True
         self._detached = detached
         self._disposables: WeakSet[DisposableProtocol] = WeakSet()
@@ -25,25 +24,23 @@ class Scope:
         # child scope's index in parent's `self._scopes`
         self._index = -1
 
-        self._parent = _ACTIVE_SCOPE
-        if not detached and _ACTIVE_SCOPE:
-            _ACTIVE_SCOPE._scopes.append(self)
-            self._index = len(_ACTIVE_SCOPE._scopes)
+        self._parent = suite._ACTIVE_SCOPE
+        if not detached and suite._ACTIVE_SCOPE:
+            suite._ACTIVE_SCOPE._scopes.append(self)
+            self._index = len(suite._ACTIVE_SCOPE._scopes)
 
     @property
     def active(self):
         return self._active
 
     def run(self, fn: Callable[[], _T]) -> Union[_T, None]:
-        global _ACTIVE_SCOPE
-
         if self.active:
-            current_scope = _ACTIVE_SCOPE
+            current_scope = self._suite._ACTIVE_SCOPE
             try:
-                _ACTIVE_SCOPE = self
+                self._suite._ACTIVE_SCOPE = self
                 return fn()
             finally:
-                _ACTIVE_SCOPE = current_scope
+                self._suite._ACTIVE_SCOPE = current_scope
         else:
             warnings.warn("cannot run inactive scope.")
 
@@ -51,15 +48,13 @@ class Scope:
         """
         only be called on non-detached scopes
         """
-        global _ACTIVE_SCOPE
-        _ACTIVE_SCOPE = self
+        self._suite._ACTIVE_SCOPE = self
 
     def off(self):
         """
         only be called on non-detached scopes
         """
-        global _ACTIVE_SCOPE
-        _ACTIVE_SCOPE = self._parent
+        self._suite._ACTIVE_SCOPE = self._parent
 
     def add_disposable(self, disposable: DisposableProtocol):
         self._disposables.add(disposable)
@@ -91,68 +86,35 @@ class Scope:
             self._parent = None
             self._active = False
 
-
-def scope(detached=False):
-    return Scope(detached)
-
-
-def mark_with_scope(effect: DisposableProtocol, scope: Optional[Scope] = None):
-    scope = scope or _ACTIVE_SCOPE
-    if scope:
-        scope.add_disposable(effect)
+    # def mark_with_scope(self, effect: DisposableProtocol):
+    #     scope = scope or self._suite._ACTIVE_SCOPE
+    #     if scope:
+    #         scope._add_disposable(effect)
 
 
-def get_current_scope():
-    return _ACTIVE_SCOPE
+class ScopeSuite:
+    def __init__(self) -> None:
+        self._ACTIVE_SCOPE: Optional[Scope] = None
+
+    def scope(self, detached=False):
+        return Scope(self, detached)
+
+    def mark_with_scope(self, effect: DisposableProtocol):
+        if self._ACTIVE_SCOPE:
+            self._ACTIVE_SCOPE.add_disposable(effect)
+
+    def get_current_scope(
+        self,
+    ):
+        return self._ACTIVE_SCOPE
+
+    def on_scope_dispose(self, callback: Callable[[], None]):
+        if self._ACTIVE_SCOPE:
+            self._ACTIVE_SCOPE._cleanups.append(callback)
+        else:
+            warnings.warn("There are no active scopes.")
 
 
-def on_scope_dispose(callback: Callable[[], None]):
-    if _ACTIVE_SCOPE:
-        _ACTIVE_SCOPE._cleanups.append(callback)
-    else:
-        warnings.warn("There are no active scopes.")
+_DEFAULT_SCOPE_SUITE = ScopeSuite()
 
-
-# class GlobalScopeManager:
-#     def __init__(self) -> None:
-#         self._stack: List[Scope] = []
-
-#     def _get_last_scope(self):
-#         idx = len(self._stack) - 1
-#         if idx < 0:
-#             return None
-
-#         return self._stack[idx]
-
-#     def new_scope(self):
-#         s = Scope()
-#         self._stack.append(s)
-#         return s
-
-#     def dispose_scope(self):
-#         s = self._get_last_scope()
-#         if s:
-#             s.dispose()
-#             self._stack.pop()
-
-#     def mark_effect_with_scope(
-#         self, scope: Optional[Scope], effect: DisposableProtocol
-#     ):
-#         s = scope
-#         if s:
-#             s.add_disposable(effect)
-
-#         return effect
-
-#     def mark_effect(self, effect: DisposableProtocol):
-#         return self.mark_effect_with_scope(self._get_last_scope(), effect)
-
-
-# _GLOBAL_SCOPE_MANAGER = GlobalScopeManager()
-
-
-# @contextmanager
-# def scope():
-#     scope = _GLOBAL_SCOPE_MANAGER.new_scope()
-#     yield scope
-#     _GLOBAL_SCOPE_MANAGER.dispose_scope()
+scope = _DEFAULT_SCOPE_SUITE.scope
