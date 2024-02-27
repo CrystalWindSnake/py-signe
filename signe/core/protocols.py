@@ -74,12 +74,12 @@ class CallerProtocol(Protocol[_TOut]):  # type: ignore
         ...
 
 
-class IScope(Protocol):
-    def add_disposable(self, disposable: DisposableProtocol):
-        ...
+# class IScope(Protocol):
+#     def add_disposable(self, disposable: DisposableProtocol):
+#         ...
 
-    def dispose(self):
-        ...
+#     def dispose(self):
+#         ...
 
 
 class SignalResultProtocol(Protocol[_T]):

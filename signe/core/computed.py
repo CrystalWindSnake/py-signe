@@ -15,15 +15,13 @@ from signe.core.deps import GetterDepManager
 from signe.core.helper import has_changed
 from signe.core.idGenerator import IdGen
 
-from signe.core.protocols import ComputedResultProtocol, IScope
+from signe.core.protocols import ComputedResultProtocol
 
 from .effect import Effect
-from .scope import _GLOBAL_SCOPE_MANAGER
-
+from .scope import Scope, ScopeSuite, _DEFAULT_SCOPE_SUITE
 
 if TYPE_CHECKING:  # pragma: no cover
     from .runtime import ExecutionScheduler
-
 
 _T = TypeVar("_T")
 
@@ -36,10 +34,10 @@ class Computed(Generic[_T]):
         fn: Callable[[], _T],
         *,
         scheduler: ExecutionScheduler,
+        scope: Union[Scope, ScopeSuite],
         debug_trigger: Optional[Callable] = None,
         priority_level=1,
         debug_name: Optional[str] = None,
-        scope: Optional[IScope] = None,
         capture_parent_effect=True,
     ) -> None:
         self.__id = self._id_gen.new()
@@ -64,8 +62,11 @@ class Computed(Generic[_T]):
             capture_parent_effect=capture_parent_effect,
         )
         self._dep_manager = GetterDepManager(scheduler)
-        if scope:
+
+        if isinstance(scope, Scope):
             scope.add_disposable(self)
+        elif isinstance(scope, ScopeSuite):
+            scope.mark_with_scope(self)
 
     @property
     def id(self):
@@ -121,7 +122,7 @@ def computed(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
-    scope: Optional[IScope] = None,
+    scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> _T_computed_setter:
     ...
@@ -134,7 +135,7 @@ def computed(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
-    scope: Optional[IScope] = None,
+    scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> _T_computed[_T]:
     ...
@@ -146,7 +147,7 @@ def computed(
     priority_level=1,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
-    scope: Optional[IScope] = None,
+    scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> Union[_T_computed_setter, _T_computed[_T]]:
     kws = {
@@ -157,8 +158,7 @@ def computed(
     }
 
     if fn:
-        scope = scope or _GLOBAL_SCOPE_MANAGER._get_last_scope()
-        cp = Computed(fn, **kws, scope=scope)
+        cp = Computed(fn, **kws, scope=scope or _DEFAULT_SCOPE_SUITE)
         return cast(ComputedResultProtocol[_T], cp)
     else:
 

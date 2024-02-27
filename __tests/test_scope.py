@@ -1,5 +1,5 @@
 from . import utils
-from signe import signal, effect, computed, scope
+from signe import signal, effect, computed, scope, on
 import gc
 import weakref
 import logging
@@ -47,12 +47,15 @@ def test_should_release_signal():
 def test_should_release_with_computed():
     computed_rc = RefChecker()
     effect_rc = RefChecker()
+    on_rc = RefChecker()
 
     num = signal(1)
 
     def temp_run(x):
-        with scope():
+        current_scope = scope()
 
+        @current_scope.run
+        def _():
             @computed
             def cp_1():
                 print(x)
@@ -67,6 +70,15 @@ def test_should_release_with_computed():
 
             effect_rc.collect(eff1)
 
+            @on
+            def on_spy():
+                pass
+                cp_1.value
+
+            on_rc.collect(on_spy)
+
+        current_scope.dispose()
+
     temp_run(1)
     temp_run(2)
     temp_run(3)
@@ -74,6 +86,7 @@ def test_should_release_with_computed():
     gc.collect()
     assert computed_rc.calledTimes == 4
     assert effect_rc.calledTimes == 4
+    assert on_rc.calledTimes == 4
 
 
 def test_should_not_release_computed_call():
@@ -92,13 +105,17 @@ def test_should_not_release_computed_call():
     computed_rc.collect(cp_1)
 
     def temp_run():
-        with scope():
+        current_scope = scope()
 
+        @current_scope.run
+        def _():
             @effect
             def ef1():
                 cp_1.value
 
             effect_rc.collect(ef1)
+
+        current_scope.dispose()
 
     temp_run()
 
@@ -128,8 +145,10 @@ def test_nested_scope():
     signal_rc.collect(num)
 
     def temp_run(x):
-        with scope():
+        current_scope = scope()
 
+        @current_scope.run
+        def _():
             @computed
             def cp_1():
                 print(x)
@@ -138,8 +157,10 @@ def test_nested_scope():
             computed_rc.collect(cp_1)
 
             def inner_fn():
-                with scope():
+                nested_scope = scope()
 
+                @nested_scope.run
+                def _():
                     @computed
                     def cp_2():
                         return cp_1.value
@@ -148,7 +169,12 @@ def test_nested_scope():
 
                     computed_rc.collect(cp_2)
 
+                nested_scope.dispose()
+
             inner_fn()
+
+        current_scope.dispose()
+
         gc.collect()
 
     assert signal_rc.calledTimes == 0
