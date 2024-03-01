@@ -142,6 +142,54 @@ class Test_base_case:
         dict_data.value = {"c": 99}
         assert spy_dict.calledTimes == 3
 
+    def test_list_sort(self):
+        spy_for = utils.fn()
+        spy_len = utils.fn()
+        spy_get0 = utils.fn()
+        spy_get1 = utils.fn()
+        spy_print_value = utils.fn()
+
+        data = signal([3, 2, 1])
+
+        # should trigger
+        @effect
+        def _():
+            spy_for()
+            for i in data.value:
+                print(i)
+
+        # should not trigger
+        @effect
+        def _():
+            spy_len()
+            print(len(data.value))
+
+        # should trigger
+        @effect
+        def _():
+            spy_get0()
+            print(data.value[0])
+
+        # should not trigger
+        @effect
+        def _():
+            spy_get1()
+            print(data.value[1])
+
+        # should  trigger
+        @effect
+        def _():
+            spy_print_value()
+            print(data.value)
+
+        data.value.sort()
+
+        assert spy_for.calledTimes == 2
+        assert spy_len.calledTimes == 1
+        assert spy_get0.calledTimes == 2
+        assert spy_get1.calledTimes == 1
+        assert spy_print_value.calledTimes == 2
+
     def test_list_reverse(self):
         spy_for = utils.fn()
         spy_len = utils.fn()
