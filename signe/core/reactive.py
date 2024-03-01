@@ -11,6 +11,7 @@ from typing import (
     TypeVar,
     cast,
     Iterable,
+    overload,
 )
 from signe.core.consts import EffectState
 from signe.core.context import get_default_scheduler
@@ -265,6 +266,17 @@ class ListProxy(UserList):
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
+    def sort(self, /, *args, **kwds):
+        org_data = self.data.copy()
+        self.data.sort(*args, **kwds)
+
+        @batch
+        def _():
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+            for idx, (org, new_value) in enumerate(zip(org_data, self.data)):
+                if has_changed(org, new_value):
+                    self._dep_manager.triggered(idx, new_value, EffectState.NEED_UPDATE)
 
     def reverse(self) -> None:
         org_data = self.data.copy()
