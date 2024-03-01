@@ -136,6 +136,12 @@ class Test_base_case:
         dict_data.value["b"] = 2  # not trigger
         assert spy_dict.calledTimes == 2
 
+        list_data.value = [10, 20, 30]
+        assert spy_list.calledTimes == 3
+
+        dict_data.value = {"c": 99}
+        assert spy_dict.calledTimes == 3
+
     def test_list_reverse(self):
         spy_for = utils.fn()
         spy_len = utils.fn()
