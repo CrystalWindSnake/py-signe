@@ -11,7 +11,6 @@ from typing import (
     TypeVar,
     cast,
     Iterable,
-    overload,
 )
 from signe.core.consts import EffectState
 from signe.core.context import get_default_scheduler
