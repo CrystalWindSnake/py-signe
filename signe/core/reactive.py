@@ -156,14 +156,17 @@ class DictProxy(UserDict):
                     "len", len(self.data), EffectState.NEED_UPDATE
                 )
 
+                self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
             else:
                 org_value = self.data[key]
                 self.data[key] = item
 
                 if has_changed(org_value, item):
                     self._dep_manager.triggered(key, item, EffectState.NEED_UPDATE)
-
-            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+                    self._dep_manager.triggered(
+                        "__iter__", None, EffectState.NEED_UPDATE
+                    )
 
     def __iter__(self) -> Iterator:
         self._dep_manager.tracked("__iter__")
@@ -188,6 +191,11 @@ class DictProxy(UserDict):
 
     def clear(self) -> None:
         super().clear()
+
+    def __str__(self) -> str:
+        self._dep_manager.tracked("__iter__")
+
+        return str(self.data)
 
     def __hash__(self) -> int:
         return hash(id(self))

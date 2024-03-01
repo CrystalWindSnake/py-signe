@@ -110,6 +110,38 @@ class Test_base_case:
         data.value.clear()
         assert dummy == [2, 1, 0]
 
+    def test_to_str_track(self):
+        spy_list = utils.fn()
+        spy_dict = utils.fn()
+
+        list_data = signal([1, 2, 3])
+        dict_data = signal({"a": 1, "b": 2})
+
+        @effect
+        def _():
+            spy_list()
+            print(list_data.value)
+
+        @effect
+        def _():
+            spy_dict()
+            print(dict_data.value)
+
+        list_data.value[0] = 66
+        list_data.value[1] = 2  # not trigger
+
+        assert spy_list.calledTimes == 2
+
+        dict_data.value["a"] = 66
+        dict_data.value["b"] = 2  # not trigger
+        assert spy_dict.calledTimes == 2
+
+        list_data.value = [10, 20, 30]
+        assert spy_list.calledTimes == 3
+
+        dict_data.value = {"c": 99}
+        assert spy_dict.calledTimes == 3
+
     def test_list_reverse(self):
         spy_for = utils.fn()
         spy_len = utils.fn()
