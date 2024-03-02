@@ -113,9 +113,11 @@ class Test_base_case:
     def test_to_str_track(self):
         spy_list = utils.fn()
         spy_dict = utils.fn()
+        spy_deep = utils.fn()
 
         list_data = signal([1, 2, 3])
         dict_data = signal({"a": 1, "b": 2})
+        deep_data = signal({"a": {"b": {"c": [{"e": 1}], "d": 2}}})
 
         @effect
         def _():
@@ -127,6 +129,11 @@ class Test_base_case:
             spy_dict()
             print(dict_data.value)
 
+        @effect
+        def _():
+            spy_deep()
+            print(deep_data.value)
+
         list_data.value[0] = 66
         list_data.value[1] = 2  # not trigger
 
@@ -135,6 +142,10 @@ class Test_base_case:
         dict_data.value["a"] = 66
         dict_data.value["b"] = 2  # not trigger
         assert spy_dict.calledTimes == 2
+
+        deep_data.value["a"]["b"]["c"][0]["e"] = 66
+        deep_data.value["a"]["b"]["d"] = 2  # not trigger
+        assert spy_deep.calledTimes == 2
 
         list_data.value = [10, 20, 30]
         assert spy_list.calledTimes == 3

@@ -38,14 +38,11 @@ def track_all_deep(obj):
     while len(stack):
         current = stack.pop()
         if isinstance(current, ListProxy):
-            for value in current:
-                if is_reactive(value):
-                    stack.append(value)
+            stack.extend(value for value in current if is_reactive(value))
 
         elif isinstance(current, DictProxy):
-            for value in current.values():
-                if is_reactive(value):
-                    stack.append(value)
+            stack.extend(value for value in current.values() if is_reactive(value))
+
         elif isinstance(current, InstanceProxy):
             for key in _get_data_fields(current):
                 value = getattr(current, key)
@@ -99,8 +96,6 @@ def reactive(
 
     _proxy_maps[obj_id] = proxy
     return cast(T, proxy)
-
-    # return obj
 
 
 def to_reactive(obj: T, scheduler: ExecutionScheduler) -> T:
@@ -193,8 +188,7 @@ class DictProxy(UserDict):
         super().clear()
 
     def __str__(self) -> str:
-        self._dep_manager.tracked("__iter__")
-
+        track_all_deep(self)
         return str(self.data)
 
     def __hash__(self) -> int:
@@ -320,8 +314,7 @@ class ListProxy(UserList):
         return result
 
     def __str__(self) -> str:
-        self._dep_manager.tracked("__iter__")
-
+        track_all_deep(self)
         return str(self.data)
 
     def __hash__(self) -> int:
