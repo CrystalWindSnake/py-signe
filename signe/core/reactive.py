@@ -216,9 +216,13 @@ class ListProxy(UserList):
         self.__nested = set()
         self._scheduler = scheduler
 
-    def __getitem__(self, i):
-        self._dep_manager.tracked(i)
-        res = reactive(self.data[i], self._scheduler)
+    def __getitem__(self, index):
+        if isinstance(index, slice):
+            for idx in list(range(len(self.data)))[index]:
+                self._dep_manager.tracked(idx)
+        else:
+            self._dep_manager.tracked(index)
+        res = reactive(self.data[index], self._scheduler)
         if _is_proxy(res):
             self.__nested.add(res)
         return res
