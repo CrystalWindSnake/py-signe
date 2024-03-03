@@ -1,3 +1,4 @@
+import asyncio
 from signe import signal, on, computed, batch, reactive
 from . import utils
 
@@ -361,3 +362,30 @@ class Test_on:
 
         data.value[0]["age"] = 66
         assert records_calc == [0, 60, 66 + 20 + 30]
+
+    def test_async(self):
+        async def main():
+            order_dummy = []
+            value_dummy = []
+            a = signal(1)
+
+            @on(a, onchanges=True)
+            async def _():
+                order_dummy.append(3)
+                value_dummy.append(a.value)
+                await asyncio.sleep(0)
+                order_dummy.append(4)
+                value_dummy.append(a.value)
+
+            order_dummy.append(1)
+            a.value = 99
+            order_dummy.append(2)
+            assert a.value == 99
+
+            await asyncio.sleep(0.1)
+            order_dummy.append(5)
+
+            assert order_dummy == [1, 2, 3, 4, 5]
+            assert value_dummy == [99, 99]
+
+        asyncio.run(main())
