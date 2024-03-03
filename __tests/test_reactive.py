@@ -296,6 +296,24 @@ class Test_base_case:
         data.value.clear()
         assert dummy == [4, 3, 2, 0]
 
+    def test_list_slice(self):
+        dummy = []
+
+        data = signal(["1", "2", "3", "4", "5", "6"])
+
+        # should trigger
+        @effect
+        def _():
+            dummy.append(",".join(data.value[1:-2]))
+
+        assert dummy == ["2,3,4"]
+        data.value[1] = "99"
+
+        assert dummy == ["2,3,4", "99,3,4"]
+
+        data.value[0] = "99"
+        assert dummy == ["2,3,4", "99,3,4"]
+
     def test_dict_in(self):
         dummy = []
         data = signal({"a": 1, "b": 2})
