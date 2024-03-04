@@ -28,13 +28,11 @@ _T = TypeVar("_T")
 
 
 _T_async_fn = Callable[[], Coroutine[Any, Any, _T]]
-_T_wrap_fn = Callable[[_T_async_fn], _T]
+_T_wrap_fn = Callable[[_T_async_fn], ComputedResultProtocol[_T]]
 
 
-@overload
 def async_computed(
     source: Union[TGetter, Sequence[TGetter]],
-    fn: Optional[_T_async_fn] = None,
     *,
     init: Optional[_T] = None,
     evaluating: Optional[TSignal[bool]] = None,
@@ -43,35 +41,6 @@ def async_computed(
     scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> _T_wrap_fn[_T]:
-    ...
-
-
-@overload
-def async_computed(
-    source: Union[TGetter, Sequence[TGetter]],
-    fn: _T_async_fn,
-    *,
-    init: Optional[_T] = None,
-    evaluating: Optional[TSignal[bool]] = None,
-    debug_trigger: Optional[Callable] = None,
-    debug_name: Optional[str] = None,
-    scope: Optional[Union[Scope, ScopeSuite]] = None,
-    scheduler: Optional[ExecutionScheduler] = None,
-) -> ComputedResultProtocol[_T]:
-    ...
-
-
-def async_computed(
-    source: Union[TGetter, Sequence[TGetter]],
-    fn: Optional[_T_async_fn] = None,
-    *,
-    init: Optional[_T] = None,
-    evaluating: Optional[TSignal[bool]] = None,
-    debug_trigger: Optional[Callable] = None,
-    debug_name: Optional[str] = None,
-    scope: Optional[Union[Scope, ScopeSuite]] = None,
-    scheduler: Optional[ExecutionScheduler] = None,
-) -> Union[_T_wrap_fn[_T], ComputedResultProtocol[_T]]:
     kws = {
         "init": init,
         "evaluating": evaluating,
@@ -80,10 +49,10 @@ def async_computed(
         "scheduler": scheduler or get_default_scheduler(),
     }
 
-    if fn:
+    def wrap_cp(fn: _T_async_fn):
         current = signal(init, is_shallow=True)
-        evaluating = evaluating or signal(False, is_shallow=True)
-        evaluating.value = False
+        evaluating_ref = evaluating or signal(False, is_shallow=True)
+        evaluating_ref.value = False
 
         effect_kws = {
             "debug_name": kws.pop("debug_name"),
@@ -98,20 +67,16 @@ def async_computed(
             scope=scope or _DEFAULT_SCOPE_SUITE,
         )
         async def _():
-            evaluating.value = True
+            evaluating_ref.value = True
 
             try:
                 current.value = await fn()
             finally:
-                evaluating.value = False
+                evaluating_ref.value = False
 
         return cast(ComputedResultProtocol[_T], AsyncComputedResult(current, fn))
-    else:
 
-        def wrap_cp(fn: _T_async_fn):
-            return async_computed(source, fn, **kws, scope=scope)
-
-        return wrap_cp
+    return wrap_cp
 
 
 class AsyncComputedResult(Generic[_T]):
