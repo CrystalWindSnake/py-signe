@@ -1,3 +1,4 @@
+import asyncio
 from dataclasses import dataclass
 from signe.core.context import get_default_scheduler
 from signe.core.effect import Effect
@@ -118,6 +119,14 @@ def on(
             return on(source, fn, **call_kws, scope=scope)  # type: ignore
 
         return wrap_cp
+
+    if asyncio.iscoroutinefunction(fn):
+        base_fn = fn
+
+        def wrap_fn(*args, **kws):  # type: ignore
+            asyncio.get_event_loop().create_task(base_fn(*args, **kws))  # type: ignore
+
+        fn = wrap_fn
 
     getters: List[OnGetterModel] = []
     if isinstance(source, Sequence):
