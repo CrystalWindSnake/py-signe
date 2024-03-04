@@ -201,7 +201,7 @@ def to_value(obj: TMaybeSignal[_T]) -> _T:
     if is_signal(obj):
         return cast(TSignal, obj).value
 
-    # if isinstance(obj, Callable):
-    #     return obj()
+    if isinstance(obj, Callable):
+        return obj()
 
     return cast(_T, obj)

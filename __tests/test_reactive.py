@@ -475,6 +475,8 @@ class Test_to_raw:
 
 class Test_to_value:
     def test_to_value(self):
+        s = signal(1)
         assert to_value(1) == 1
-        assert to_value(signal(1)) == 1
+        assert to_value(s) == 1
         assert to_value(computed(lambda: 1)) == 1
+        assert to_value(lambda: s.value + 1) == 2
