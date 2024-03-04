@@ -10,7 +10,6 @@ from typing import (
     Generic,
     Union,
     cast,
-    overload,
 )
 from signe.core.signal import signal
 from signe.core.context import get_default_scheduler
