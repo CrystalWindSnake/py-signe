@@ -1,5 +1,14 @@
 from dataclasses import dataclass
-from signe import reactive, computed, effect, signal, to_raw, to_value
+from signe import (
+    reactive,
+    computed,
+    effect,
+    signal,
+    to_raw,
+    to_value,
+    is_signal,
+    async_computed,
+)
 from . import utils
 
 
@@ -480,3 +489,20 @@ class Test_to_value:
         assert to_value(s) == 1
         assert to_value(computed(lambda: 1)) == 1
         assert to_value(lambda: s.value + 1) == 2
+
+
+class Test_is_signal:
+    def test_base(self):
+        s = signal(1)
+
+        @computed
+        def cp():
+            return s.value + 1
+
+        @async_computed(s)
+        async def cp1():
+            return s.value + 1
+
+        assert is_signal(s)
+        assert is_signal(cp)
+        assert is_signal(cp1)

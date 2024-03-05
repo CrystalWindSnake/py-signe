@@ -1,13 +1,10 @@
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
-    Any,
-    Coroutine,
     Sequence,
     TypeVar,
     Callable,
     Optional,
-    Generic,
     Union,
     cast,
 )
@@ -17,7 +14,7 @@ from signe.core.on import on
 
 from signe.core.protocols import ComputedResultProtocol
 
-from .types import TGetter, TSignal
+from .types import AsyncComputedResult, TGetter, TSignal, _T_async_fn
 from .scope import Scope, ScopeSuite, _DEFAULT_SCOPE_SUITE
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -26,7 +23,6 @@ if TYPE_CHECKING:  # pragma: no cover
 _T = TypeVar("_T")
 
 
-_T_async_fn = Callable[[], Coroutine[Any, Any, _T]]
 _T_wrap_fn = Callable[[_T_async_fn], ComputedResultProtocol[_T]]
 
 
@@ -70,18 +66,3 @@ def async_computed(
         return cast(ComputedResultProtocol[_T], AsyncComputedResult(current, fn))
 
     return wrap_cp
-
-
-class AsyncComputedResult(Generic[_T]):
-    __slot__ = ("_result", "_fn")
-
-    def __init__(self, result: TSignal[_T], fn: _T_async_fn[_T]) -> None:
-        self._result = result
-        self._fn = fn
-
-    @property
-    def value(self):
-        return self._result.value
-
-    def __call__(self) -> Any:
-        return self._fn()

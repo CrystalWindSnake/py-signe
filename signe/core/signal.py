@@ -16,7 +16,7 @@ from signe.core.idGenerator import IdGen
 
 from signe.core.deps import GetterDepManager
 from signe.core.protocols import SignalResultProtocol
-from signe.core.asyncComputed import AsyncComputedResult
+from .types import AsyncComputedResult
 from .context import get_default_scheduler
 from .types import TMaybeSignal, TSignal
 from collections.abc import Hashable
