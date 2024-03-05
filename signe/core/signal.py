@@ -16,6 +16,7 @@ from signe.core.idGenerator import IdGen
 
 from signe.core.deps import GetterDepManager
 from signe.core.protocols import SignalResultProtocol
+from signe.core.asyncComputed import AsyncComputedResult
 from .context import get_default_scheduler
 from .types import TMaybeSignal, TSignal
 from collections.abc import Hashable
@@ -182,7 +183,7 @@ def is_signal(obj: TMaybeSignal):
     Args:
         obj (_type_): _description_
     """
-    return isinstance(obj, (Signal, Computed))
+    return isinstance(obj, (Signal, Computed, AsyncComputedResult))
 
 
 def to_value(obj: TMaybeSignal[_T]) -> _T:
