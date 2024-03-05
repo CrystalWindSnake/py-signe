@@ -40,29 +40,23 @@ def async_computed(
     scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> _T_wrap_fn[_T]:
-    kws = {
-        "init": init,
-        "evaluating": evaluating,
-        "debug_trigger": debug_trigger,
-        "debug_name": debug_name,
-        "scheduler": scheduler or get_default_scheduler(),
-    }
+    scheduler = scheduler or get_default_scheduler()
 
     def wrap_cp(fn: _T_async_fn):
-        current = signal(init, is_shallow=True)
+        current = signal(init, is_shallow=True, scheduler=scheduler)
         evaluating_ref = evaluating or signal(False, is_shallow=True)
         evaluating_ref.value = False
 
         effect_kws = {
-            "debug_name": kws.pop("debug_name"),
-            "debug_trigger": kws.pop("debug_trigger"),
+            "debug_name": debug_name,
+            "debug_trigger": debug_trigger,
         }
 
         @on(
             source,
             onchanges=True,
             effect_kws=effect_kws,
-            scheduler=kws.get("scheduler"),
+            scheduler=scheduler,
             scope=scope or _DEFAULT_SCOPE_SUITE,
         )
         async def _():
