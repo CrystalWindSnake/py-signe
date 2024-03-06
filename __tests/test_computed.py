@@ -125,6 +125,47 @@ class Test_computed_case:
 
         assert m1() == 100
 
+    def test_should_trigger_on_demand(self):
+        use_s2_spy = utils.fn()
+        only_s1_spy = utils.fn()
+
+        s1 = signal(1)
+        s2 = signal(2)
+        use_s2 = signal(True)
+
+        @computed
+        def total():
+            if use_s2.value:
+                use_s2_spy()
+                return s1.value + s2.value
+
+            only_s1_spy()
+            return s1.value
+
+        @effect
+        def _():
+            print(total.value)
+
+        assert use_s2_spy.calledTimes == 1
+        assert only_s1_spy.calledTimes == 0
+
+        s1.value += 1
+        s2.value += 1
+        assert use_s2_spy.calledTimes == 3
+        assert only_s1_spy.calledTimes == 0
+
+        use_s2.value = False
+        assert use_s2_spy.calledTimes == 3
+        assert only_s1_spy.calledTimes == 1
+
+        s2.value += 1
+        assert use_s2_spy.calledTimes == 3
+        assert only_s1_spy.calledTimes == 1
+
+        s1.value += 1
+        assert use_s2_spy.calledTimes == 3
+        assert only_s1_spy.calledTimes == 2
+
 
 class Test_async_computed:
     def test_should_be_correct_order(self):
