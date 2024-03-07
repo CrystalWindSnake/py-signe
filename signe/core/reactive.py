@@ -16,6 +16,7 @@ from signe.core.consts import EffectState
 from signe.core.context import get_default_scheduler
 from signe.core.deps import GetterDepManager
 from signe.core.helper import has_changed, is_object
+from signe.core.mixins import is_signal
 from signe.core.protocols import RawableProtocol
 from .batch import batch
 from weakref import WeakKeyDictionary, WeakValueDictionary
@@ -75,7 +76,7 @@ def reactive(
     obj: T,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> T:
-    if not is_object(obj) or is_reactive(obj):
+    if not is_object(obj) or is_reactive(obj) or is_signal(obj):
         return cast(T, obj)
 
     obj_id = id(obj)
