@@ -396,6 +396,12 @@ class Test_base_case:
         assert dummy1 == [3, 4]
         assert dummy2 == [10, 99]
 
+    def test_should_return_ref_directly_from_reactive(self):
+        s = signal(1)
+        data = {"s": s}
+
+        assert data["s"] is s
+
 
 class Test_to_raw:
     def test_signal_list(self):
