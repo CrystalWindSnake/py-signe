@@ -1,6 +1,8 @@
 from __future__ import annotations
 from typing import (
     TYPE_CHECKING,
+    Any,
+    Generic,
     Sequence,
     TypeVar,
     Callable,
@@ -8,13 +10,14 @@ from typing import (
     Union,
     cast,
 )
+from signe.core.mixins import ReadableMixin
 from signe.core.signal import signal
 from signe.core.context import get_default_scheduler
 from signe.core.on import on
 
 from signe.core.protocols import ComputedResultProtocol
 
-from .types import AsyncComputedResult, TGetter, TSignal, _T_async_fn
+from .types import TGetter, TSignal, _T_async_fn
 from .scope import Scope, ScopeSuite, _DEFAULT_SCOPE_SUITE
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -66,3 +69,18 @@ def async_computed(
         return cast(ComputedResultProtocol[_T], AsyncComputedResult(current, fn))
 
     return wrap_cp
+
+
+class AsyncComputedResult(Generic[_T], ReadableMixin[_T]):
+    __slot__ = ("_result", "_fn")
+
+    def __init__(self, result: TSignal[_T], fn: _T_async_fn[_T]) -> None:
+        self._result = result
+        self._fn = fn
+
+    @property
+    def value(self):
+        return self._result.value
+
+    def __call__(self) -> Any:
+        return self._fn()

@@ -1,4 +1,5 @@
-from signe.core.signal import Signal, signal, to_value, is_signal
+from signe.core.signal import Signal, signal
+from signe.core.mixins import to_value, is_signal
 from signe.core.effect import Effect, effect, stop
 from signe.core.computed import Computed, computed
 from signe.core.asyncComputed import async_computed
