@@ -20,7 +20,7 @@ from typing import (
 )
 
 from .types import TGetter, TSignal
-from .signal import is_signal
+from .mixins import is_signal
 
 from .runtime import ExecutionScheduler
 

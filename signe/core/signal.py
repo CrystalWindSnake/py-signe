@@ -9,16 +9,15 @@ from typing import (
     cast,
     overload,
 )
-from signe.core.computed import Computed
+from signe.core.mixins import ReadableMixin
 from signe.core.reactive import to_raw, to_reactive
 from signe.core.consts import EffectState
 from signe.core.idGenerator import IdGen
 
 from signe.core.deps import GetterDepManager
 from signe.core.protocols import SignalResultProtocol
-from .types import AsyncComputedResult
 from .context import get_default_scheduler
-from .types import TMaybeSignal, TSignal
+from .types import TMaybeSignal
 from collections.abc import Hashable
 import operator
 
@@ -56,7 +55,7 @@ class SignalOption(Generic[_T]):
         self.comp: TSignalOptionComp = comp  # type: ignore
 
 
-class Signal(Generic[_T]):
+class Signal(Generic[_T], ReadableMixin[_T]):
     __slots__ = (
         "__id",
         "_is_shallow",
@@ -67,7 +66,6 @@ class Signal(Generic[_T]):
         "option",
         "__debug_name",
         "_option_comp",
-        "__weakref__",
     )
     _id_gen = IdGen("Signal")
 
@@ -175,34 +173,3 @@ def signal(
         is_shallow=is_shallow,
     )
     return cast(SignalResultProtocol[_T], signal)
-
-
-def is_signal(obj: TMaybeSignal):
-    """Checks if a value is a signal or computed object.
-
-    Args:
-        obj (_type_): _description_
-    """
-    return isinstance(obj, (Signal, Computed, AsyncComputedResult))
-
-
-def to_value(obj: TMaybeSignal[_T]) -> _T:
-    """Normalizes values / signals / getters to values.
-
-    Args:
-        obj (_type_): _description_
-
-    ## Example
-    ```
-    to_value(1)          #    --> 1
-    to_value(signal(1))  #    --> 1
-    ```
-
-    """
-    if is_signal(obj):
-        return cast(TSignal, obj).value
-
-    if isinstance(obj, Callable):
-        return obj()
-
-    return cast(_T, obj)

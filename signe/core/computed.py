@@ -16,6 +16,7 @@ from signe.core.helper import has_changed
 from signe.core.idGenerator import IdGen
 
 from signe.core.protocols import ComputedResultProtocol
+from signe.core.mixins import ReadableMixin
 
 from .effect import Effect
 from .scope import Scope, ScopeSuite, _DEFAULT_SCOPE_SUITE
@@ -26,7 +27,7 @@ if TYPE_CHECKING:  # pragma: no cover
 _T = TypeVar("_T")
 
 
-class Computed(Generic[_T]):
+class Computed(Generic[_T], ReadableMixin[_T]):
     _id_gen = IdGen("Computed")
 
     def __init__(
