@@ -323,6 +323,36 @@ class Test_base_case:
         data.value[0] = "99"
         assert dummy == ["2,3,4", "99,3,4"]
 
+    def test_list_append(self):
+        dummy = []
+
+        data = signal(["1", "2", "3"])
+
+        # should trigger
+        @effect
+        def _():
+            dummy.append(",".join(data.value))
+
+        assert dummy == ["1,2,3"]
+        data.value.append("4")
+
+        assert dummy == ["1,2,3", "1,2,3,4"]
+
+    def test_list_insert(self):
+        dummy = []
+
+        data = signal(["1", "2", "3"])
+
+        # should trigger
+        @effect
+        def _():
+            dummy.append(",".join(data.value))
+
+        assert dummy == ["1,2,3"]
+        data.value.insert(1, "66")
+
+        assert dummy == ["1,2,3", "1,66,2,3"]
+
     def test_dict_in(self):
         dummy = []
         data = signal({"a": 1, "b": 2})
