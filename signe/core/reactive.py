@@ -257,6 +257,14 @@ class ListProxy(UserList):
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
+    def insert(self, i: int, item: Any) -> None:
+        super().insert(i, to_raw(item))
+
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
     def extend(self, other: Iterable) -> None:
         super().extend((to_raw(o) for o in other))
 
