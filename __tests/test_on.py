@@ -1,5 +1,6 @@
 import asyncio
 from signe import signal, on, computed, batch, reactive
+from signe.core.on import WatchedState
 from . import utils
 
 
@@ -76,6 +77,28 @@ class Test_on:
         assert fn_spy.calledTimes == 1
         assert dummy1 == 100
         assert dummy2 == 99
+
+    def test_should_apply_object_method(self):
+        spy_without_args = utils.fn()
+        spy_with_args = utils.fn()
+
+        class T:
+            def __init__(self) -> None:
+                self.data = signal(1)
+
+                on(self.data)(self.fn_without_args)
+                on(self.data)(self.fn_with_state)
+
+            def fn_without_args(self):
+                spy_without_args()
+
+            def fn_with_state(self, state: WatchedState):
+                spy_with_args()
+
+        t = T()
+        t.data.value += 1
+        assert spy_without_args.calledTimes == 2
+        assert spy_with_args.calledTimes == 2
 
     def test_watch_on_reactive_by_list(self):
         dummy = []

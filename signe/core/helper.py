@@ -4,7 +4,7 @@ from typing import Callable, Tuple
 
 
 def get_func_args_count(fn):
-    return len(inspect.getfullargspec(fn).args)
+    return len(inspect.getfullargspec(fn).args) - inspect.ismethod(fn)
 
 
 def is_object(obj):
