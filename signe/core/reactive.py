@@ -82,7 +82,7 @@ def reactive(
     obj_id = id(obj)
     proxy = _proxy_maps.get(obj_id)
 
-    if proxy:
+    if proxy is not None:
         return proxy  # type: ignore
 
     scheduler = scheduler or get_default_scheduler()

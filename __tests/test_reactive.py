@@ -432,6 +432,13 @@ class Test_base_case:
 
         assert data["s"] is s
 
+    def test_should_same_proxy_from_getting_same_empty_list(self):
+        data = signal({"rows": []})
+
+        first = data.value["rows"]
+        second = data.value["rows"]
+        assert first is second
+
 
 class Test_to_raw:
     def test_signal_list(self):
