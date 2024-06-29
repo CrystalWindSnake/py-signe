@@ -180,10 +180,11 @@ class DictProxy(UserDict):
 
     def __delitem__(self, key):
         del self.data[key]
-        self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
 
-    def pop(self, i: int = -1) -> Any:
-        return super().pop(i)
+        @batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
 
     def clear(self) -> None:
         super().clear()

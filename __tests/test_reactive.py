@@ -1,3 +1,4 @@
+from copy import deepcopy
 from dataclasses import dataclass
 from signe import (
     reactive,
@@ -118,6 +119,25 @@ class Test_base_case:
 
         data.value.clear()
         assert dummy == [2, 1, 0]
+
+    def test_dict_pop_by_print(self):
+        raw_data = {"a": 1, "b": 2, "c": 3}
+        data = signal(raw_data)
+
+        collects = []
+
+        @effect
+        def _():
+            print(data.value)
+            collects.append(deepcopy(raw_data))
+
+        # not trigger effect because no change
+        a = data.value.pop("x", 10)
+        assert a == 10
+        data.value.pop("b")
+        data.value.pop("c")
+
+        assert collects == [{"a": 1, "b": 2, "c": 3}, {"a": 1, "c": 3}, {"a": 1}]
 
     def test_to_str_track(self):
         spy_list = utils.fn()
