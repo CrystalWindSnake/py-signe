@@ -220,8 +220,8 @@ class ListProxy(UserList):
 
     def __getitem__(self, index):
         if isinstance(index, slice):
-            for idx in list(range(len(self.data)))[index]:
-                self._dep_manager.tracked(idx)
+            self._dep_manager.tracked("__iter__")
+
         else:
             self._dep_manager.tracked(index)
         res = reactive(self.data[index], self._scheduler)
