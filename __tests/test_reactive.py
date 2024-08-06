@@ -341,7 +341,13 @@ class Test_base_case:
         assert dummy == ["2,3,4", "99,3,4"]
 
         data.value[0] = "99"
-        assert dummy == ["2,3,4", "99,3,4"]
+        assert dummy == ["2,3,4", "99,3,4", "99,3,4"]
+
+        data.value.append("7")
+        assert dummy == ["2,3,4", "99,3,4", "99,3,4", "99,3,4,5"]
+
+        data.value.insert(0, "0")
+        assert dummy == ["2,3,4", "99,3,4", "99,3,4", "99,3,4,5", "99,99,3,4,5"]
 
     def test_list_append(self):
         dummy = []
