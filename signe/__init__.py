@@ -37,4 +37,4 @@ __all__ = [
     "is_reactive",
 ]
 
-__version__ = "0.4.16"
+__version__ = "0.4.17"
