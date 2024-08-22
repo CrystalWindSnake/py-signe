@@ -76,7 +76,12 @@ def reactive(
     obj: T,
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> T:
-    if not is_object(obj) or is_reactive(obj) or is_signal(obj):
+    if (
+        not is_object(obj)
+        or is_reactive(obj)
+        or is_signal(obj)
+        or isinstance(obj, NoProxy)
+    ):
         return cast(T, obj)
 
     obj_id = id(obj)
@@ -342,6 +347,12 @@ class ListProxy(UserList):
 
     def to_raw(self):
         return self.data
+
+
+class NoProxy:
+    """Instances of its subclasses will not be converted into proxy objects by `reactive`."""
+
+    pass
 
 
 _instance_proxy_maps: WeakKeyDictionary = WeakKeyDictionary()

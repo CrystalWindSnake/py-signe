@@ -10,6 +10,7 @@ from signe import (
     is_signal,
     async_computed,
 )
+from signe.core.reactive import NoProxy
 from . import utils
 
 
@@ -464,6 +465,16 @@ class Test_base_case:
         first = data.value["rows"]
         second = data.value["rows"]
         assert first is second
+
+    def test_no_proxy(self):
+        class Model(NoProxy):
+            pass
+
+        m = Model()
+        data = signal([m], is_shallow=False)
+
+        assert isinstance(data.value[0], Model)
+        assert data.value[0] is m
 
 
 class Test_to_raw:
