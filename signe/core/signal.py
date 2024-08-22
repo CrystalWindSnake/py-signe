@@ -164,7 +164,7 @@ def signal(
     scheduler: Optional[ExecutionScheduler] = None,
 ) -> SignalResultProtocol[_T]:
     if isinstance(value, Signal):
-        return value
+        return value  # type: ignore
     signal = Signal(
         value,
         scheduler=scheduler or get_default_scheduler(),
