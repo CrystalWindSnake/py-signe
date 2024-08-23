@@ -98,8 +98,15 @@ class Signal(Generic[_T], ReadableMixin[_T]):
     @property
     def value(self):
         self._dep_manager.tracked("value")
-
         return self._value
+
+    def set_value(self, value: _T):
+        """Sets the value of the signal.
+
+        Args:
+            value (_T):  The new value of the signal.
+        """
+        self.value = value
 
     @value.setter
     def value(self, value: _T):

@@ -91,6 +91,9 @@ class SignalResultProtocol(Protocol[_T]):
     def value(self, value: _T):
         ...
 
+    def set_value(self, value: _T):
+        ...
+
 
 class ComputedResultProtocol(Generic[_TOut], Protocol):  # type: ignore
     @property
