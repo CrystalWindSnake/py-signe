@@ -54,7 +54,7 @@ class ExecutionScheduler:
         self._pause_track_count = 0
 
         self._scheduler_fns: Dict[Callable[[], None], None] = {}
-        self.__running = False
+        self.__running = 0
         self.pause_should_run_stack = 0
 
     def pause_track(self):
@@ -90,7 +90,7 @@ class ExecutionScheduler:
 
     def run(self):
         count = 0
-        self.__running = True
+        self.__running += 1
 
         try:
             while self._scheduler_fns:
@@ -100,7 +100,7 @@ class ExecutionScheduler:
                 if count >= 10000:  # pragma: no cover
                     raise Exception("exceeded the maximum number of execution rounds.")
         finally:
-            self.__running = False
+            self.__running -= 1
 
     def _run_scheduler_fns(self):
         fns = tuple(self._scheduler_fns.keys())
