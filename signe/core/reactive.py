@@ -20,6 +20,7 @@ from signe.core.mixins import is_signal
 from signe.core.protocols import RawableProtocol
 from .batch import batch
 from weakref import WeakKeyDictionary, WeakValueDictionary
+from functools import partial
 
 
 if TYPE_CHECKING:  # pragma: no cover
@@ -137,6 +138,7 @@ class DictProxy(UserDict):
         self._dep_manager = GetterDepManager(scheduler)
         self.__nested = set()
         self._scheduler = scheduler
+        self.__batch = partial(batch, scheduler=scheduler)
 
     def __getitem__(self, key):
         self._dep_manager.tracked(key)
@@ -149,7 +151,7 @@ class DictProxy(UserDict):
         item = to_raw(item)
         is_new = key not in self.data
 
-        @batch
+        @self.__batch
         def _():
             if is_new:
                 self.data[key] = item
@@ -186,7 +188,7 @@ class DictProxy(UserDict):
     def __delitem__(self, key):
         del self.data[key]
 
-        @batch
+        @self.__batch
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
@@ -222,6 +224,7 @@ class ListProxy(UserList):
         self._dep_manager = GetterDepManager(scheduler)
         self.__nested = set()
         self._scheduler = scheduler
+        self.__batch = partial(batch, scheduler=scheduler)
 
     def __getitem__(self, index):
         if isinstance(index, slice):
@@ -241,7 +244,7 @@ class ListProxy(UserList):
 
         if has_changed(org_value, item):
 
-            @batch
+            @self.__batch
             def _():
                 self._dep_manager.triggered(i, item, EffectState.NEED_UPDATE)
                 self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
@@ -258,7 +261,7 @@ class ListProxy(UserList):
     def append(self, item: Any) -> None:
         super().append(to_raw(item))
 
-        @batch
+        @self.__batch
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
@@ -266,7 +269,7 @@ class ListProxy(UserList):
     def insert(self, i: int, item: Any) -> None:
         super().insert(i, to_raw(item))
 
-        @batch
+        @self.__batch
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
@@ -274,7 +277,7 @@ class ListProxy(UserList):
     def extend(self, other: Iterable) -> None:
         super().extend((to_raw(o) for o in other))
 
-        @batch
+        @self.__batch
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
@@ -283,7 +286,7 @@ class ListProxy(UserList):
         org_data = self.data.copy()
         self.data.sort(*args, **kwds)
 
-        @batch
+        @self.__batch
         def _():
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
             for idx, (org, new_value) in enumerate(zip(org_data, self.data)):
@@ -294,7 +297,7 @@ class ListProxy(UserList):
         org_data = self.data.copy()
         self.data.reverse()
 
-        @batch
+        @self.__batch
         def _():
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
             for idx, (org, new_value) in enumerate(zip(org_data, self.data)):
@@ -304,7 +307,7 @@ class ListProxy(UserList):
     def remove(self, item: Any) -> None:
         super().remove(to_raw(item))
 
-        @batch
+        @self.__batch
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
@@ -312,7 +315,7 @@ class ListProxy(UserList):
     def pop(self, i: int = -1) -> Any:
         value = super().pop(i)
 
-        @batch
+        @self.__batch
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
@@ -322,7 +325,7 @@ class ListProxy(UserList):
     def clear(self) -> None:
         super().clear()
 
-        @batch
+        @self.__batch
         def _():
             self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
             self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
