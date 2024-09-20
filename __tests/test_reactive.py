@@ -394,6 +394,20 @@ class Test_base_case:
 
         assert dummy == ["1,2,3", "1,3"]
 
+    def test_list_extend(self):
+        dummy = []
+
+        data = signal(["1", "2", "3"])
+
+        @effect
+        def _():
+            dummy.append(",".join(data.value))
+
+        assert dummy == ["1,2,3"]
+        data.value.extend(["4", "5"])
+
+        assert dummy == ["1,2,3", "1,2,3,4,5"]
+
     def test_dict_in(self):
         dummy = []
         data = signal({"a": 1, "b": 2})
