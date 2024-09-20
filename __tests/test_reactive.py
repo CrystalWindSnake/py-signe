@@ -380,6 +380,20 @@ class Test_base_case:
 
         assert dummy == ["1,2,3", "1,66,2,3"]
 
+    def test_list_del_item(self):
+        dummy = []
+
+        data = signal(["1", "2", "3"])
+
+        @effect
+        def _():
+            dummy.append(",".join(data.value))
+
+        assert dummy == ["1,2,3"]
+        del data.value[1]
+
+        assert dummy == ["1,2,3", "1,3"]
+
     def test_dict_in(self):
         dummy = []
         data = signal({"a": 1, "b": 2})

@@ -348,6 +348,14 @@ class ListProxy(UserList):
 
         return False
 
+    def __delitem__(self, i: slice) -> None:
+        super().__delitem__(i)
+
+        @self.__batch
+        def _():
+            self._dep_manager.triggered("len", len(self.data), EffectState.NEED_UPDATE)
+            self._dep_manager.triggered("__iter__", None, EffectState.NEED_UPDATE)
+
     def to_raw(self):
         return self.data
 
