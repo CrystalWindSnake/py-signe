@@ -10,6 +10,7 @@ from signe.core.cleanup import cleanup
 from signe.core.reactive import reactive, to_raw, is_reactive
 from signe.core.scope import scope
 from signe.core.types import TMaybeSignal, TGetterSignal, TSignal, TGetter
+from .version import __version__
 
 __all__ = [
     "Signal",
@@ -35,6 +36,5 @@ __all__ = [
     "TSignal",
     "WatchedState",
     "is_reactive",
+    "__version__",
 ]
-
-__version__ = "0.4.20"
