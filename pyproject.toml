@@ -1,7 +1,27 @@
+[tool.poetry]
+name = "signe"
+version = "0.4.20"
+description = "A responsive system implemented in python with reference to the core mechanisms of S.js and vue reactivity."
+authors = ["CrystalWindSnake <568166495@qq.com>"]
+license = "MIT"
+readme = "README.md"
+repository = "https://github.com/CrystalWindSnake/py-signe"
+keywords = ["python", "reactivity", "reactivity-system"]
+
+[tool.poetry.dependencies]
+python = "^3.8"
+typing-extensions = ">=4.0.0"
+
+
+
+[tool.poetry.group.dev.dependencies]
+ruff = "^0.6.6"
+pytest = "^8.3.3"
+coverage = "^7.6.1"
+
 [tool.ruff.lint]
 select = ["E", "F"]
 ignore = ["E501"]
-
 
 
 [tool.coverage.run]
