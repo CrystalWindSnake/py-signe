@@ -34,6 +34,7 @@ def async_computed(
     *,
     init: Optional[_T] = None,
     evaluating: Optional[TSignal[bool]] = None,
+    onchanges=True,
     debug_trigger: Optional[Callable] = None,
     debug_name: Optional[str] = None,
     scope: Optional[Union[Scope, ScopeSuite]] = None,
@@ -53,7 +54,7 @@ def async_computed(
 
         @on(
             source,
-            onchanges=True,
+            onchanges=onchanges,
             effect_kws=effect_kws,
             scheduler=scheduler,
             scope=scope or _DEFAULT_SCOPE_SUITE,
