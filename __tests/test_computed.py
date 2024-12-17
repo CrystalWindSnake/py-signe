@@ -204,3 +204,39 @@ class Test_async_computed:
             assert dummy_values == [0, 100]
 
         asyncio.run(main())
+
+    def test_should_be_immediate_run(self):
+        async def main():
+            dummy_orders = []
+            dummy_values = []
+            a = signal(1)
+
+            @async_computed(a, init=0, onchanges=False)
+            async def test():
+                dummy_orders.append("start computed")
+                await asyncio.sleep(0.1)
+                dummy_orders.append("end computed")
+                return a.value + 1
+
+            @effect
+            def _():
+                dummy_orders.append("effect start")
+                dummy_values.append(test.value)
+
+            dummy_orders.append("modify a")
+            await asyncio.sleep(0.1)
+            dummy_orders.append("back to main")
+
+            await asyncio.sleep(0.2)
+            assert dummy_orders == [
+                "effect start",
+                "modify a",
+                "start computed",
+                "back to main",
+                "end computed",
+                "effect start",
+            ]
+
+            assert dummy_values == [0, 2]
+
+        asyncio.run(main())
