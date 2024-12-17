@@ -14,7 +14,7 @@ from typing import (
 )
 
 
-from signe.core.idGenerator import IdGen
+from signe.core.id_generator import IdGen
 from signe.core.scope import Scope, ScopeSuite, _DEFAULT_SCOPE_SUITE
 
 from .consts import EffectState
@@ -215,8 +215,7 @@ def effect(
     debug_name: Optional[str] = None,
     scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
-) -> _TEffect_Fn[None]:
-    ...
+) -> _TEffect_Fn[None]: ...
 
 
 @overload
@@ -229,8 +228,7 @@ def effect(
     debug_name: Optional[str] = None,
     scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
-) -> Effect:
-    ...
+) -> Effect: ...
 
 
 def effect(

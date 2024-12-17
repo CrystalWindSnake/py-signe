@@ -12,7 +12,7 @@ from typing import (
 from signe.core.mixins import ReadableMixin
 from signe.core.reactive import to_raw, to_reactive
 from signe.core.consts import EffectState
-from signe.core.idGenerator import IdGen
+from signe.core.id_generator import IdGen
 
 from signe.core.deps import GetterDepManager
 from signe.core.protocols import SignalResultProtocol
@@ -134,8 +134,7 @@ def signal(
     debug_name: Optional[str] = None,
     *,
     scheduler: Optional[ExecutionScheduler] = None,
-) -> SignalResultProtocol[_T]:
-    ...
+) -> SignalResultProtocol[_T]: ...
 
 
 @overload
@@ -146,8 +145,7 @@ def signal(
     *,
     is_shallow=False,
     scheduler: Optional[ExecutionScheduler] = None,
-) -> SignalResultProtocol[_T]:
-    ...
+) -> SignalResultProtocol[_T]: ...
 
 
 @overload
@@ -158,8 +156,7 @@ def signal(
     *,
     is_shallow=False,
     scheduler: Optional[ExecutionScheduler] = None,
-) -> SignalResultProtocol[_T]:
-    ...
+) -> SignalResultProtocol[_T]: ...
 
 
 def signal(
@@ -175,7 +172,7 @@ def signal(
     signal = Signal(
         value,
         scheduler=scheduler or get_default_scheduler(),
-        option=SignalOption(comp),
+        option=SignalOption(comp),  # type: ignore
         debug_name=debug_name,
         is_shallow=is_shallow,
     )
