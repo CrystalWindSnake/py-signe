@@ -13,7 +13,7 @@ from signe.core.consts import EffectState
 from signe.core.context import get_default_scheduler
 from signe.core.deps import GetterDepManager
 from signe.core.helper import has_changed
-from signe.core.idGenerator import IdGen
+from signe.core.id_generator import IdGen
 
 from signe.core.protocols import ComputedResultProtocol
 from signe.core.mixins import ReadableMixin
@@ -125,8 +125,7 @@ def computed(
     debug_name: Optional[str] = None,
     scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
-) -> _T_computed_setter:
-    ...
+) -> _T_computed_setter: ...
 
 
 @overload
@@ -138,8 +137,7 @@ def computed(
     debug_name: Optional[str] = None,
     scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
-) -> _T_computed[_T]:
-    ...
+) -> _T_computed[_T]: ...
 
 
 def computed(

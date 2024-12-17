@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import Any, Dict, Optional, Set, TYPE_CHECKING
-from signe.core.idGenerator import IdGen
+from signe.core.id_generator import IdGen
 from .consts import EffectState
 
 
