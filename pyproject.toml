@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "signe"
-version = "0.4.22"
+version = "0.4.23"
 description = "A responsive system implemented in python with reference to the core mechanisms of S.js and vue reactivity."
 authors = ["CrystalWindSnake <568166495@qq.com>"]
 license = "MIT"
