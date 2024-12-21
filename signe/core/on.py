@@ -1,5 +1,6 @@
 import asyncio
 from dataclasses import dataclass
+from signe.core.consts import UNIQUE_VALUE
 from signe.core.context import get_default_scheduler
 from signe.core.effect import Effect
 from signe.core.helper import has_changed, get_func_args_count
@@ -79,8 +80,7 @@ def on(
     deep=False,
     scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
-):
-    ...
+): ...
 
 
 @overload
@@ -92,8 +92,7 @@ def on(
     deep=False,
     scope: Optional[Union[Scope, ScopeSuite]] = None,
     scheduler: Optional[ExecutionScheduler] = None,
-):
-    ...
+): ...
 
 
 def on(
@@ -138,7 +137,7 @@ def on(
         return [g.get_value() for g in getters]
 
     args_count = get_func_args_count(fn)
-    prev_values = [None] * len(getters)
+    prev_values = [UNIQUE_VALUE] * len(getters)
 
     def scheduler_fn(effect: Effect):
         nonlocal prev_values
@@ -147,13 +146,13 @@ def on(
 
         new_values = effect.update()
         if deep or any(has_changed(n, v) for n, v in zip(new_values, prev_values)):
-            states = (
-                WatchedState(cur, prev)
-                for cur, prev in zip(new_values, prev_values or new_values)
-            )
             if args_count == 0:
                 fn()
             else:
+                states = (
+                    WatchedState(cur, None if prev is UNIQUE_VALUE else prev)
+                    for cur, prev in zip(new_values, prev_values or new_values)
+                )
                 fn(*states)
 
         prev_values = new_values

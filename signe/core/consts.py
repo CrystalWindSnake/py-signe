@@ -8,3 +8,6 @@ class EffectState(IntEnum):
     RUNNING = 4
     STALE = 5
     QUERYING = 6
+
+
+UNIQUE_VALUE = object()
